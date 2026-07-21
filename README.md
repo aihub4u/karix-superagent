@@ -62,18 +62,24 @@ confirming against a sandbox call before production:
    ```
 2. **Environment** — copy `.env.example` to `.env` and fill in
    `OPENAI_API_KEY`, `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`.
-3. **Seed an org + WABA account** for testing (no admin UI yet — insert
-   directly via Supabase/Neon's SQL editor):
-   ```sql
-   insert into organizations (name, slug) values ('MDH Spices', 'mdh-spices') returning id;
-   -- take that id, then encrypt a Karix token with:
-   --   node -e "console.log(require('./server/services/crypto').encryptToken('YOUR_KARIX_TOKEN'))"
-   insert into waba_accounts (organization_id, waba_id, region, karix_token_enc, label)
-   values ('<org-id>', '<waba-id>', 'india', '<encrypted-token>', 'MDH Primary');
-   ```
-4. **Run locally**: `npm run dev`, open `http://localhost:3000`. Set
-   `currentWabaAccountId` in the browser console (or wire up an account
-   picker) to the WABA account UUID from step 3.
+3. **Connect a WABA account** — no SQL/Postman needed anymore. Set
+   `ADMIN_SETUP_SECRET` in your env vars (any password-like string), deploy,
+   then open the app and click **"Setup WABA connection"** in the header.
+   Enter the admin secret, client name, real WABA ID, region, and Karix
+   bearer token — this calls `POST /api/admin/quick-setup`, which
+   upserts the `organizations` and `waba_accounts` rows and encrypts the
+   token server-side before it touches the database. The browser then
+   remembers the connection (`localStorage`) across reloads. Use the same
+   panel again with a different org name to onboard a second client, or
+   the same name to update an existing one's token.
+   (The old manual path — SQL Editor inserts + `/api/admin/encrypt-token`
+   via Postman — still works and is documented at the bottom of this
+   section if you ever need to script bulk onboarding instead.)
+4. **Run locally**: `npm run dev`, open `http://localhost:3000`. Once
+   connected via the Setup panel, the browser sends `x-org-id`/`x-user-id`
+   headers automatically — the `DEV_ORG_ID`/`DEV_USER_ID` env vars in
+   `server/index.js`'s middleware are now just a fallback for direct API
+   testing (curl/Postman) without the UI.
 5. **Deploy on Render**: push to GitHub, connect the repo, set the same
    env vars in the Render dashboard, build command `npm install`, start
    command `npm start` — matches your existing Node/Express + Render

@@ -373,10 +373,83 @@
   .approve-btn:active:not(:disabled) { transform: scale(0.98); }
   .approve-btn:disabled { background: var(--panel-2); color: var(--mist-dim); cursor: not-allowed; }
 
-  button:focus-visible, input:focus-visible, .drop:focus-visible {
+  button:focus-visible, input:focus-visible, select:focus-visible, .drop:focus-visible {
     outline: 2px solid var(--cyan);
     outline-offset: 2px;
   }
+
+  /* ---- Setup modal ---- */
+  .account-btn {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--mist);
+    background: rgba(16,21,44,0.6);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .account-btn:hover { border-color: var(--line-lit); color: var(--ink); }
+  .account-btn.connected { border-color: var(--mint); color: var(--ink); }
+  .account-btn .gear { opacity: 0.8; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(4,6,14,0.72);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    position: relative;
+    width: 420px; max-width: 92vw;
+    background: linear-gradient(160deg, var(--panel), var(--void-2));
+    border: 1px solid var(--line-lit);
+    border-radius: 8px;
+    padding: 26px;
+    box-shadow: 0 0 60px rgba(47,230,224,0.08), 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal::before, .modal::after {
+    content: ''; position: absolute; width: 16px; height: 16px; border-color: var(--cyan); border-style: solid; opacity: 0.7;
+  }
+  .modal::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .modal::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+  .modal h2 {
+    font-family: var(--font-display); font-size: 16px; letter-spacing: 0.03em;
+    margin: 0 0 4px; color: var(--ink);
+  }
+  .modal .modal-sub {
+    font-family: var(--font-mono); font-size: 11px; color: var(--mist);
+    letter-spacing: 0.04em; margin: 0 0 20px; line-height: 1.6;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--mist); margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line);
+    background: rgba(8,11,22,0.7); color: var(--ink); font-family: var(--font-body); font-size: 13.5px;
+    outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(47,230,224,0.15); }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+  .modal-actions button { flex: 1; padding: 12px; border-radius: 6px; border: none; font-family: var(--font-display); font-weight: 600; font-size: 12.5px; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; }
+  .btn-cancel { background: var(--panel-2); color: var(--mist); }
+  .btn-cancel:hover { color: var(--ink); }
+  .btn-provision { background: linear-gradient(135deg, var(--cyan), var(--violet)); color: #050810; }
+  .btn-provision:hover { filter: brightness(1.08); }
+  .btn-provision:disabled { background: var(--panel-2); color: var(--mist-dim); cursor: not-allowed; }
+  .modal-msg { font-family: var(--font-mono); font-size: 11.5px; margin-top: 12px; padding: 10px 12px; border-radius: 4px; border-left: 2px solid; display: none; }
+  .modal-msg.show { display: block; }
+  .modal-msg.error { border-color: var(--coral); color: var(--coral); background: rgba(255,92,122,0.08); }
+  .modal-msg.ok { border-color: var(--mint); color: var(--mint); background: rgba(63,235,176,0.08); }
 
   @media (prefers-reduced-motion: reduce) {
     .grid-field, .dot.ok, .osc span, .scanline.sweep { animation: none !important; }
@@ -407,9 +480,47 @@
     </div>
     <div class="header-right">
       <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkLabel">Checking link…</span></div>
+      <button class="account-btn" id="accountBtn"><span class="gear">⚙</span><span id="accountLabel">Setup WABA connection</span></button>
       <div class="mode-switch">
         <button class="mode-btn active" id="tabChat">Conversational</button>
         <button class="mode-btn" id="tabBulk">Bulk Uplink</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="setupModal">
+    <div class="modal">
+      <h2>Connect a WABA account</h2>
+      <p class="modal-sub">Provisions (or reconnects) a client organization + Karix WABA credential for testing. Requires the admin setup secret configured on the server.</p>
+      <div class="field">
+        <label for="setupAdminSecret">Admin setup secret</label>
+        <input type="password" id="setupAdminSecret" placeholder="ADMIN_SETUP_SECRET" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="setupOrgName">Client / organization name</label>
+        <input type="text" id="setupOrgName" placeholder="e.g. MDH Spices" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="setupWabaId">WABA ID</label>
+          <input type="text" id="setupWabaId" placeholder="Real Karix WABA ID" />
+        </div>
+        <div class="field">
+          <label for="setupRegion">Region</label>
+          <select id="setupRegion">
+            <option value="india">India</option>
+            <option value="uae">UAE</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="setupToken">Karix bearer token</label>
+        <input type="password" id="setupToken" placeholder="Real Karix API token" autocomplete="off" />
+      </div>
+      <div class="modal-msg" id="setupMsg"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="setupCancel">Cancel</button>
+        <button class="btn-provision" id="setupSubmit">Provision &amp; connect</button>
       </div>
     </div>
   </div>
@@ -468,7 +579,48 @@ const linkLabel = document.getElementById('linkLabel');
 
 let history = [];
 let currentSpec = null;
-let currentWabaAccountId = null; // set this from your account/org picker
+
+// ---- account/WABA connection state (persisted in this browser only) ----
+const ACCOUNT_KEY = 'karixSuperagentAccount';
+let account = null; // { organizationId, wabaAccountId, orgName, wabaId, userId }
+
+function loadAccount() {
+  try {
+    const raw = localStorage.getItem(ACCOUNT_KEY);
+    if (raw) account = JSON.parse(raw);
+  } catch { account = null; }
+  if (account && !account.userId) account.userId = crypto.randomUUID();
+  renderAccountButton();
+}
+function saveAccount() {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
+  renderAccountButton();
+}
+function renderAccountButton() {
+  const btn = document.getElementById('accountBtn');
+  const label = document.getElementById('accountLabel');
+  if (account && account.wabaAccountId) {
+    btn.classList.add('connected');
+    label.textContent = `${account.orgName} · ${account.wabaId}`;
+  } else {
+    btn.classList.remove('connected');
+    label.textContent = 'Setup WABA connection';
+  }
+}
+// Backwards-compatible getter used by the rest of the app
+function currentWabaAccountId() { return account ? account.wabaAccountId : null; }
+
+// Adds tenant headers to every API call once an account is connected.
+function authHeaders(extra = {}) {
+  const h = { ...extra };
+  if (account) {
+    h['x-org-id'] = account.organizationId;
+    h['x-user-id'] = account.userId;
+  }
+  return h;
+}
+
+loadAccount();
 
 fetch('/api/health').then(r => r.ok ? r.json() : Promise.reject()).then(() => {
   linkDot.classList.add('ok');
@@ -568,7 +720,7 @@ async function sendMessage() {
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
     });
     const data = await res.json();
@@ -592,13 +744,17 @@ inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(
 
 approveBtn.addEventListener('click', async () => {
   if (!currentSpec) return;
+  if (!currentWabaAccountId()) {
+    addMessage('assistant', 'No WABA account connected yet — click "Setup WABA connection" in the header first.');
+    return;
+  }
   approveBtn.disabled = true;
   approveBtn.textContent = 'Transmitting…';
   try {
     const res = await fetch('/api/templates/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ wabaAccountId: currentWabaAccountId, spec: currentSpec, source: 'chat' }),
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ wabaAccountId: currentWabaAccountId(), spec: currentSpec, source: 'chat' }),
     });
     const data = await res.json();
     approveBtn.textContent = 'Approve & Transmit to Karix';
@@ -639,11 +795,15 @@ dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classLis
 
 async function uploadFile(file) {
   if (!file) return;
+  if (!currentWabaAccountId()) {
+    document.getElementById('jobStatus').innerHTML = '<div class="job-summary">No WABA account connected yet — click "Setup WABA connection" in the header first.</div>';
+    return;
+  }
   const form = new FormData();
   form.append('file', file);
-  form.append('wabaAccountId', currentWabaAccountId || '');
+  form.append('wabaAccountId', currentWabaAccountId());
   document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Uploading and queuing…</div>';
-  const res = await fetch('/api/bulk-import', { method: 'POST', body: form });
+  const res = await fetch('/api/bulk-import', { method: 'POST', headers: authHeaders(), body: form });
   const data = await res.json();
   if (!res.ok) { document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Upload failed: ' + data.error + '</div>'; return; }
   pollJob(data.jobId);
@@ -652,13 +812,84 @@ async function uploadFile(file) {
 async function pollJob(jobId) {
   const el = document.getElementById('jobStatus');
   const timer = setInterval(async () => {
-    const res = await fetch('/api/bulk-import/' + jobId);
+    const res = await fetch('/api/bulk-import/' + jobId, { headers: authHeaders() });
     const data = await res.json();
     el.innerHTML = `<div class="job-summary">STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
       data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>`).join('');
     if (['completed','completed_with_errors','failed'].includes(data.job.status)) clearInterval(timer);
   }, 2000);
 }
+
+// ---- setup modal ----
+const setupModal = document.getElementById('setupModal');
+const setupMsg = document.getElementById('setupMsg');
+const setupSubmit = document.getElementById('setupSubmit');
+
+function openSetupModal() {
+  setupMsg.className = 'modal-msg';
+  setupMsg.textContent = '';
+  if (account) {
+    document.getElementById('setupOrgName').value = account.orgName || '';
+    document.getElementById('setupWabaId').value = account.wabaId || '';
+  }
+  setupModal.classList.add('open');
+  document.getElementById('setupAdminSecret').focus();
+}
+function closeSetupModal() { setupModal.classList.remove('open'); }
+
+document.getElementById('accountBtn').addEventListener('click', openSetupModal);
+document.getElementById('setupCancel').addEventListener('click', closeSetupModal);
+setupModal.addEventListener('click', (e) => { if (e.target === setupModal) closeSetupModal(); });
+
+setupSubmit.addEventListener('click', async () => {
+  const adminSecret = document.getElementById('setupAdminSecret').value.trim();
+  const orgName = document.getElementById('setupOrgName').value.trim();
+  const wabaId = document.getElementById('setupWabaId').value.trim();
+  const region = document.getElementById('setupRegion').value;
+  const token = document.getElementById('setupToken').value.trim();
+
+  setupMsg.className = 'modal-msg';
+  if (!adminSecret || !orgName || !wabaId || !token) {
+    setupMsg.className = 'modal-msg error show';
+    setupMsg.textContent = 'All fields are required (admin secret, org name, WABA ID, and token).';
+    return;
+  }
+
+  setupSubmit.disabled = true;
+  setupSubmit.textContent = 'Provisioning…';
+  try {
+    const res = await fetch('/api/admin/quick-setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+      body: JSON.stringify({ orgName, wabaId, region, token }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setupMsg.className = 'modal-msg error show';
+      setupMsg.textContent = data.error === 'unauthorized' ? 'Admin secret rejected by server.' : (data.detail || data.error || 'Provisioning failed.');
+      return;
+    }
+    account = {
+      organizationId: data.organizationId,
+      wabaAccountId: data.wabaAccountId,
+      orgName: data.orgName,
+      wabaId: data.wabaId,
+      userId: (account && account.userId) || crypto.randomUUID(),
+    };
+    saveAccount();
+    setupMsg.className = 'modal-msg ok show';
+    setupMsg.textContent = `Connected to ${data.orgName} (${data.wabaId}). This browser will stay connected until you change it.`;
+    document.getElementById('setupToken').value = '';
+    document.getElementById('setupAdminSecret').value = '';
+    setTimeout(closeSetupModal, 1200);
+  } catch (err) {
+    setupMsg.className = 'modal-msg error show';
+    setupMsg.textContent = 'Could not reach the server.';
+  } finally {
+    setupSubmit.disabled = false;
+    setupSubmit.textContent = 'Provision & connect';
+  }
+});
 </script>
 </body>
 </html>
