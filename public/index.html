@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Template Builder</title>
+<style>
+  :root {
+    --wa-green: #075e54;
+    --wa-bubble: #dcf8c6;
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --border: #e2e5e9;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --error: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  .app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+  .chat-col { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+  .header { padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .header h1 { font-size: 16px; margin: 0; }
+  .tab-btn { background:none; border:1px solid var(--border); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .tab-btn.active { background: var(--accent); color:#fff; border-color: var(--accent); }
+  .messages { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width: 70%; padding:10px 14px; border-radius:12px; line-height:1.4; font-size:14px; white-space:pre-wrap; }
+  .msg.user { align-self:flex-end; background: var(--accent); color:#fff; }
+  .msg.assistant { align-self:flex-start; background: var(--panel); border:1px solid var(--border); }
+  .composer { display:flex; gap:8px; padding:16px; background:var(--panel); border-top:1px solid var(--border); }
+  .composer input { flex:1; padding:12px 14px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
+  .composer button { padding:12px 20px; border-radius:8px; border:none; background: var(--accent); color:#fff; cursor:pointer; font-weight:600; }
+  .preview-col { padding:20px; overflow-y:auto; background: var(--bg); }
+  .preview-col h2 { font-size:14px; color: var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .phone { background:#e5ddd5; border-radius:14px; padding:16px; min-height:200px; }
+  .bubble { background: var(--wa-bubble); border-radius:8px; padding:10px 12px; font-size:13px; max-width: 90%; box-shadow: 0 1px 1px rgba(0,0,0,.1); }
+  .bubble .hdr { font-weight:700; margin-bottom:4px; }
+  .bubble .ftr { color:#667781; font-size:11px; margin-top:6px; }
+  .bubble .btns { margin-top:8px; border-top:1px solid #cfe8bd; padding-top:6px; display:flex; flex-direction:column; gap:4px; }
+  .bubble .btn { color:#00a5f4; text-align:center; font-size:13px; padding:4px; }
+  .status-box { margin-top:16px; padding:12px; border-radius:8px; font-size:13px; }
+  .status-box.error { background:#fee2e2; color:var(--error); }
+  .status-box.warn { background:#fff7ed; color:#9a3412; }
+  .status-box.ok { background:#ecfdf5; color:#065f46; }
+  .approve-btn { margin-top:12px; width:100%; padding:12px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; }
+  .approve-btn:disabled { background:#9ca3af; cursor:not-allowed; }
+  .bulk-panel { display:none; padding:24px; }
+  .bulk-panel.active { display:block; }
+  .drop { border: 2px dashed var(--border); border-radius:10px; padding:40px; text-align:center; color:var(--muted); }
+  .job-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="chat-col">
+    <div class="header">
+      <h1>WhatsApp Template Builder</h1>
+      <div>
+        <button class="tab-btn active" id="tabChat">Chat build</button>
+        <button class="tab-btn" id="tabBulk">Excel bulk import</button>
+      </div>
+    </div>
+
+    <div id="chatView">
+      <div class="messages" id="messages">
+        <div class="msg assistant">Tell me what kind of WhatsApp message you want to send — e.g. "an order confirmation with the order number and delivery date", or "an OTP login code".</div>
+      </div>
+      <div class="composer">
+        <input id="input" placeholder="Describe the template you want..." />
+        <button id="send">Send</button>
+      </div>
+    </div>
+
+    <div class="bulk-panel" id="bulkView">
+      <p>Upload an Excel/CSV sheet with one row per template. Columns can be loosely named — the assistant will interpret them.</p>
+      <div class="drop" id="dropZone">Drop a .xlsx/.csv file here, or click to choose</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
+      <div id="jobStatus"></div>
+    </div>
+  </div>
+
+  <div class="preview-col">
+    <h2>Live preview</h2>
+    <div class="phone" id="phone">
+      <div style="color:#667781; font-size:13px; text-align:center; padding-top:40px;">Preview appears here once a draft is ready</div>
+    </div>
+    <div id="statusArea"></div>
+    <button class="approve-btn" id="approveBtn" disabled>Approve &amp; submit to Karix</button>
+  </div>
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const phoneEl = document.getElementById('phone');
+const statusArea = document.getElementById('statusArea');
+const approveBtn = document.getElementById('approveBtn');
+
+let history = [];
+let currentSpec = null;
+let currentWabaAccountId = null; // set this from your account/org picker
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderPreview(spec) {
+  if (!spec) { phoneEl.innerHTML = '<div style="color:#667781;font-size:13px;text-align:center;padding-top:40px;">Preview appears here once a draft is ready</div>'; return; }
+  const header = spec.components.find(c => c.type === 'HEADER');
+  const body = spec.components.find(c => c.type === 'BODY');
+  const footer = spec.components.find(c => c.type === 'FOOTER');
+  const buttons = spec.components.find(c => c.type === 'BUTTONS');
+
+  let html = '<div class="bubble">';
+  if (header) html += `<div class="hdr">${header.text || (header.format + ' header')}</div>`;
+  if (body) html += `<div>${(body.text || '').replace(/</g,'&lt;')}</div>`;
+  if (footer) html += `<div class="ftr">${footer.text}</div>`;
+  if (buttons && buttons.buttons) {
+    html += '<div class="btns">' + buttons.buttons.map(b => `<div class="btn">${b.text}</div>`).join('') + '</div>';
+  }
+  html += '</div>';
+  phoneEl.innerHTML = html;
+}
+
+function renderValidation(validation) {
+  statusArea.innerHTML = '';
+  if (!validation) return;
+  if (validation.errors && validation.errors.length) {
+    const box = document.createElement('div');
+    box.className = 'status-box error';
+    box.innerHTML = '<strong>Fix before submitting:</strong><br>' + validation.errors.join('<br>');
+    statusArea.appendChild(box);
+  }
+  if (validation.warnings && validation.warnings.length) {
+    const box = document.createElement('div');
+    box.className = 'status-box warn';
+    box.innerHTML = '<strong>Heads up:</strong><br>' + validation.warnings.join('<br>');
+    statusArea.appendChild(box);
+  }
+  if (validation.valid) {
+    const box = document.createElement('div');
+    box.className = 'status-box ok';
+    box.textContent = 'Looks good — ready to submit.';
+    statusArea.appendChild(box);
+  }
+  approveBtn.disabled = !validation.valid;
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  addMessage('user', text);
+  inputEl.value = '';
+  history.push({ role: 'user', content: text });
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
+  });
+  const data = await res.json();
+  addMessage('assistant', data.reply || '...');
+  history.push({ role: 'assistant', content: data.reply || '' });
+
+  if (data.spec) {
+    currentSpec = data.spec;
+    renderPreview(data.spec);
+    renderValidation(data.validation);
+  }
+}
+
+document.getElementById('send').addEventListener('click', sendMessage);
+inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+approveBtn.addEventListener('click', async () => {
+  if (!currentSpec) return;
+  approveBtn.disabled = true;
+  approveBtn.textContent = 'Submitting...';
+  const res = await fetch('/api/templates/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wabaAccountId: currentWabaAccountId, spec: currentSpec, source: 'chat' }),
+  });
+  const data = await res.json();
+  approveBtn.textContent = 'Approve & submit to Karix';
+  if (res.ok) {
+    addMessage('assistant', 'Submitted to Karix for review. I\'ll show status updates here once it comes back from WhatsApp.');
+  } else {
+    addMessage('assistant', 'Submission failed: ' + (data.error || 'unknown error'));
+  }
+});
+
+// ---- tab switching ----
+document.getElementById('tabChat').addEventListener('click', () => {
+  document.getElementById('chatView').style.display = 'flex';
+  document.getElementById('bulkView').classList.remove('active');
+  document.getElementById('tabChat').classList.add('active');
+  document.getElementById('tabBulk').classList.remove('active');
+});
+document.getElementById('tabBulk').addEventListener('click', () => {
+  document.getElementById('chatView').style.display = 'none';
+  document.getElementById('bulkView').classList.add('active');
+  document.getElementById('tabBulk').classList.add('active');
+  document.getElementById('tabChat').classList.remove('active');
+});
+
+// ---- bulk upload ----
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => uploadFile(fileInput.files[0]));
+dropZone.addEventListener('dragover', (e) => e.preventDefault());
+dropZone.addEventListener('drop', (e) => { e.preventDefault(); uploadFile(e.dataTransfer.files[0]); });
+
+async function uploadFile(file) {
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  form.append('wabaAccountId', currentWabaAccountId || '');
+  const res = await fetch('/api/bulk-import', { method: 'POST', body: form });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('jobStatus').textContent = 'Upload failed: ' + data.error; return; }
+  pollJob(data.jobId);
+}
+
+async function pollJob(jobId) {
+  const el = document.getElementById('jobStatus');
+  const timer = setInterval(async () => {
+    const res = await fetch('/api/bulk-import/' + jobId);
+    const data = await res.json();
+    el.innerHTML = `<p>Status: ${data.job.status} — ${data.job.processed_rows}/${data.job.total_rows} rows (${data.job.succeeded_rows} ok, ${data.job.failed_rows} need review)</p>` +
+      data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}: ${r.status}</span><span>${r.error_message || ''}</span></div>`).join('');
+    if (data.job.status === 'completed' || data.job.status === 'completed_with_errors' || data.job.status === 'failed') {
+      clearInterval(timer);
+    }
+  }, 2000);
+}
+</script>
+</body>
+</html>
