@@ -6,6 +6,7 @@ const path = require('path');
 const chatRoutes = require('./routes/chat');
 const templateRoutes = require('./routes/templates');
 const bulkImportRoutes = require('./routes/bulkImport');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 app.use(cors());
@@ -31,6 +32,7 @@ app.use((req, res, next) => {
 app.use('/api', chatRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/bulk-import', bulkImportRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

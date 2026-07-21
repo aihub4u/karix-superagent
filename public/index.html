@@ -3,91 +3,457 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Template Builder</title>
+<title>Karix Superagent — Template Transmitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --wa-green: #075e54;
-    --wa-bubble: #dcf8c6;
-    --bg: #f4f6f8;
-    --panel: #ffffff;
-    --border: #e2e5e9;
-    --text: #1c1e21;
-    --muted: #6b7280;
-    --accent: #2563eb;
-    --error: #dc2626;
+    --void:      #080b16;
+    --void-2:    #0c1022;
+    --panel:     #10152c;
+    --panel-2:   #141a35;
+    --line:      #232b4a;
+    --line-lit:  #364074;
+    --cyan:      #2fe6e0;
+    --cyan-dim:  #1a9c98;
+    --violet:    #7c6cff;
+    --violet-dim:#5847c9;
+    --ink:       #eaf0ff;
+    --mist:      #8892b0;
+    --mist-dim:  #565f80;
+    --amber:     #ffb454;
+    --coral:     #ff5c7a;
+    --mint:      #3febb0;
+    --font-display: 'Chakra Petch', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
   }
+
   * { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
-  .app { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
-  .chat-col { display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-  .header { padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-  .header h1 { font-size: 16px; margin: 0; }
-  .tab-btn { background:none; border:1px solid var(--border); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; }
-  .tab-btn.active { background: var(--accent); color:#fff; border-color: var(--accent); }
-  .messages { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
-  .msg { max-width: 70%; padding:10px 14px; border-radius:12px; line-height:1.4; font-size:14px; white-space:pre-wrap; }
-  .msg.user { align-self:flex-end; background: var(--accent); color:#fff; }
-  .msg.assistant { align-self:flex-start; background: var(--panel); border:1px solid var(--border); }
-  .composer { display:flex; gap:8px; padding:16px; background:var(--panel); border-top:1px solid var(--border); }
-  .composer input { flex:1; padding:12px 14px; border-radius:8px; border:1px solid var(--border); font-size:14px; }
-  .composer button { padding:12px 20px; border-radius:8px; border:none; background: var(--accent); color:#fff; cursor:pointer; font-weight:600; }
-  .preview-col { padding:20px; overflow-y:auto; background: var(--bg); }
-  .preview-col h2 { font-size:14px; color: var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-  .phone { background:#e5ddd5; border-radius:14px; padding:16px; min-height:200px; }
-  .bubble { background: var(--wa-bubble); border-radius:8px; padding:10px 12px; font-size:13px; max-width: 90%; box-shadow: 0 1px 1px rgba(0,0,0,.1); }
-  .bubble .hdr { font-weight:700; margin-bottom:4px; }
-  .bubble .ftr { color:#667781; font-size:11px; margin-top:6px; }
-  .bubble .btns { margin-top:8px; border-top:1px solid #cfe8bd; padding-top:6px; display:flex; flex-direction:column; gap:4px; }
-  .bubble .btn { color:#00a5f4; text-align:center; font-size:13px; padding:4px; }
-  .status-box { margin-top:16px; padding:12px; border-radius:8px; font-size:13px; }
-  .status-box.error { background:#fee2e2; color:var(--error); }
-  .status-box.warn { background:#fff7ed; color:#9a3412; }
-  .status-box.ok { background:#ecfdf5; color:#065f46; }
-  .approve-btn { margin-top:12px; width:100%; padding:12px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; }
-  .approve-btn:disabled { background:#9ca3af; cursor:not-allowed; }
-  .bulk-panel { display:none; padding:24px; }
-  .bulk-panel.active { display:block; }
-  .drop { border: 2px dashed var(--border); border-radius:10px; padding:40px; text-align:center; color:var(--muted); }
-  .job-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--void);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  .grid-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(124,108,255,0.10), transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(47,230,224,0.08), transparent 45%),
+      linear-gradient(rgba(234,240,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(234,240,255,0.035) 1px, transparent 1px);
+    background-size: auto, auto, 42px 42px, 42px 42px;
+    animation: drift 60s linear infinite;
+  }
+  @keyframes drift {
+    from { background-position: 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 0 0, 0 0, 420px 420px, 420px 420px; }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    grid-template-rows: 64px 1fr;
+    height: 100vh;
+  }
+
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: linear-gradient(180deg, var(--void-2), rgba(12,16,34,0.6));
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { display: block; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-text .wordmark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: 0.04em;
+    background: linear-gradient(90deg, var(--cyan), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .brand-text .subtag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--mist);
+    text-transform: uppercase;
+  }
+
+  .header-right { display: flex; align-items: center; gap: 18px; }
+
+  .link-status {
+    display: flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--mist);
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: rgba(16,21,44,0.6);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mist-dim); }
+  .dot.ok { background: var(--mint); box-shadow: 0 0 8px var(--mint); animation: pulse 2s ease-in-out infinite; }
+  .dot.err { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .mode-switch {
+    display: flex;
+    background: rgba(16,21,44,0.7);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .mode-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    color: var(--mist);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .mode-btn.active {
+    background: linear-gradient(135deg, rgba(124,108,255,0.25), rgba(47,230,224,0.18));
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--line-lit);
+  }
+  .mode-btn:hover:not(.active) { color: var(--ink); }
+
+  .chat-col { display: flex; flex-direction: column; border-right: 1px solid var(--line); overflow: hidden; }
+
+  .messages { flex: 1; overflow-y: auto; padding: 28px 28px 12px; display: flex; flex-direction: column; gap: 16px; }
+  .messages::-webkit-scrollbar { width: 8px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--line-lit); border-radius: 4px; }
+
+  .msg-row { display: flex; flex-direction: column; max-width: 74%; }
+  .msg-row.user { align-self: flex-end; align-items: flex-end; }
+  .msg-row.assistant { align-self: flex-start; align-items: flex-start; }
+
+  .msg-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--mist-dim);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    padding: 0 4px;
+  }
+
+  .msg {
+    padding: 12px 16px;
+    border-radius: 4px;
+    line-height: 1.5;
+    font-size: 14.5px;
+    white-space: pre-wrap;
+  }
+  .msg.user {
+    background: linear-gradient(135deg, var(--violet), var(--cyan-dim));
+    color: #050810;
+    font-weight: 500;
+    border-radius: 10px 10px 2px 10px;
+  }
+  .msg.assistant {
+    background: rgba(16,21,44,0.75);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--cyan);
+    border-radius: 2px 10px 10px 10px;
+    color: var(--ink);
+  }
+
+  .thinking { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+  .osc { display: flex; align-items: center; gap: 3px; height: 18px; }
+  .osc span {
+    width: 3px; background: var(--cyan); border-radius: 2px;
+    animation: osc-bounce 1.1s ease-in-out infinite;
+  }
+  .osc span:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .osc span:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+  .osc span:nth-child(3) { height: 8px; animation-delay: 0.2s; }
+  .osc span:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+  .osc span:nth-child(5) { height: 6px; animation-delay: 0.4s; }
+  @keyframes osc-bounce { 0%,100% { transform: scaleY(0.4); opacity: 0.6; } 50% { transform: scaleY(1); opacity: 1; } }
+  .thinking-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; color: var(--mist); text-transform: uppercase; }
+
+  .composer {
+    display: flex; gap: 10px; padding: 18px 24px 22px;
+    background: linear-gradient(0deg, var(--void-2), transparent);
+    border-top: 1px solid var(--line);
+  }
+  .composer input {
+    flex: 1;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(8,11,22,0.7);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .composer input::placeholder { color: var(--mist-dim); }
+  .composer input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(47,230,224,0.15);
+  }
+  .composer button {
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 22px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    color: #050810;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .composer button:hover { filter: brightness(1.1); }
+  .composer button:active { transform: scale(0.97); }
+
+  .bulk-panel { display: none; flex: 1; padding: 32px; overflow-y: auto; }
+  .bulk-panel.active { display: block; }
+  .bulk-intro { color: var(--mist); font-size: 14px; line-height: 1.6; margin-bottom: 22px; max-width: 540px; }
+  .bulk-intro strong { color: var(--ink); }
+
+  .drop {
+    border: 1.5px dashed var(--line-lit);
+    border-radius: 10px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--mist);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: repeating-linear-gradient(135deg, rgba(47,230,224,0.02) 0px, rgba(47,230,224,0.02) 10px, transparent 10px, transparent 20px);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .drop:hover, .drop.drag { border-color: var(--cyan); background: rgba(47,230,224,0.05); }
+  .drop .drop-icon { font-size: 22px; margin-bottom: 10px; display: block; opacity: 0.6; }
+
+  .job-log { margin-top: 24px; font-family: var(--font-mono); font-size: 12px; }
+  .job-summary { color: var(--mist); margin-bottom: 12px; letter-spacing: 0.02em; }
+  .job-summary b { color: var(--cyan); }
+  .job-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    color: var(--mist);
+  }
+  .job-row .row-status { text-transform: uppercase; letter-spacing: 0.06em; }
+  .job-row .row-status.submitted { color: var(--mint); }
+  .job-row .row-status.failed, .job-row .row-status.needs_review { color: var(--amber); }
+
+  .preview-col {
+    padding: 28px 24px;
+    overflow-y: auto;
+    background: var(--void-2);
+    display: flex; flex-direction: column;
+  }
+  .preview-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--mist);
+    text-transform: uppercase;
+    margin: 0 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .preview-label::before { content: ''; width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; box-shadow: 0 0 6px var(--cyan); }
+
+  .console {
+    position: relative;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: linear-gradient(160deg, rgba(16,21,44,0.5), rgba(8,11,22,0.5));
+  }
+  .console::before, .console::after,
+  .console .br-tr, .console .br-bl {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: var(--cyan);
+    border-style: solid;
+    opacity: 0.7;
+  }
+  .console::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .console::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+  .console .br-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+  .console .br-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+
+  .scanline {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0; pointer-events: none;
+  }
+  .scanline.sweep { animation: sweep 0.9s ease-out; }
+  @keyframes sweep { 0% { top: 0; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+  .phone {
+    background: #e5ddd5;
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 180px;
+    position: relative;
+  }
+  .phone-empty { color: #8894a0; font-size: 12.5px; text-align: center; padding-top: 46px; font-family: var(--font-body); }
+  .bubble { background: #dcf8c6; border-radius: 8px; padding: 10px 12px; font-size: 13px; max-width: 92%; box-shadow: 0 1px 1px rgba(0,0,0,.12); font-family: var(--font-body); color: #111b21; }
+  .bubble .hdr { font-weight: 700; margin-bottom: 4px; }
+  .bubble .ftr { color: #667781; font-size: 11px; margin-top: 6px; }
+  .bubble .btns { margin-top: 8px; border-top: 1px solid #cfe8bd; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .bubble .btn { color: #00a5f4; text-align: center; font-size: 13px; padding: 4px; }
+
+  .status-stack { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .status-box {
+    padding: 12px 14px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    border-left: 2px solid;
+    background: rgba(16,21,44,0.6);
+  }
+  .status-box .box-label { display: block; letter-spacing: 0.1em; text-transform: uppercase; font-size: 10.5px; margin-bottom: 4px; }
+  .status-box.error { border-color: var(--coral); }
+  .status-box.error .box-label { color: var(--coral); }
+  .status-box.warn { border-color: var(--amber); }
+  .status-box.warn .box-label { color: var(--amber); }
+  .status-box.ok { border-color: var(--mint); }
+  .status-box.ok .box-label { color: var(--mint); }
+
+  .approve-btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--mint), var(--cyan-dim));
+    color: #051510;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 0 0 rgba(63,235,176,0);
+  }
+  .approve-btn:not(:disabled):hover { filter: brightness(1.08); box-shadow: 0 0 24px rgba(63,235,176,0.35); }
+  .approve-btn:active:not(:disabled) { transform: scale(0.98); }
+  .approve-btn:disabled { background: var(--panel-2); color: var(--mist-dim); cursor: not-allowed; }
+
+  button:focus-visible, input:focus-visible, .drop:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .grid-field, .dot.ok, .osc span, .scanline.sweep { animation: none !important; }
+  }
+
+  @media (max-width: 880px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: 64px 1fr auto; }
+    .preview-col { border-top: 1px solid var(--line); max-height: 46vh; }
+    .chat-col { border-right: none; }
+  }
 </style>
 </head>
 <body>
+<div class="grid-field"></div>
 <div class="app">
-  <div class="chat-col">
-    <div class="header">
-      <h1>WhatsApp Template Builder</h1>
-      <div>
-        <button class="tab-btn active" id="tabChat">Chat build</button>
-        <button class="tab-btn" id="tabBulk">Excel bulk import</button>
+
+  <div class="header">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+        <circle cx="15" cy="15" r="3" fill="#2fe6e0"/>
+        <circle cx="15" cy="15" r="8" stroke="#2fe6e0" stroke-width="1.4" opacity="0.55" fill="none"/>
+        <circle cx="15" cy="15" r="13" stroke="#7c6cff" stroke-width="1.2" opacity="0.35" fill="none"/>
+      </svg>
+      <div class="brand-text">
+        <span class="wordmark">KARIX SUPERAGENT</span>
+        <span class="subtag">Template Transmission Console</span>
       </div>
     </div>
+    <div class="header-right">
+      <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkLabel">Checking link…</span></div>
+      <div class="mode-switch">
+        <button class="mode-btn active" id="tabChat">Conversational</button>
+        <button class="mode-btn" id="tabBulk">Bulk Uplink</button>
+      </div>
+    </div>
+  </div>
 
-    <div id="chatView">
+  <div class="chat-col">
+    <div id="chatView" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
       <div class="messages" id="messages">
-        <div class="msg assistant">Tell me what kind of WhatsApp message you want to send — e.g. "an order confirmation with the order number and delivery date", or "an OTP login code".</div>
+        <div class="msg-row assistant">
+          <span class="msg-tag">Karix AI</span>
+          <div class="msg assistant">Tell me what kind of WhatsApp message you want to send — e.g. "an order confirmation with the order number and delivery date", or "an OTP login code".</div>
+        </div>
       </div>
       <div class="composer">
-        <input id="input" placeholder="Describe the template you want..." />
-        <button id="send">Send</button>
+        <input id="input" placeholder="Describe the template you want to transmit…" />
+        <button id="send">Transmit
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 11L21 3L13 21L11 13L3 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
       </div>
     </div>
 
     <div class="bulk-panel" id="bulkView">
-      <p>Upload an Excel/CSV sheet with one row per template. Columns can be loosely named — the assistant will interpret them.</p>
-      <div class="drop" id="dropZone">Drop a .xlsx/.csv file here, or click to choose</div>
+      <p class="bulk-intro">Upload an Excel/CSV sheet with one row per template. Columns can be loosely named — <strong>Karix AI</strong> interprets and normalizes each row before submission.</p>
+      <div class="drop" id="dropZone" tabindex="0">
+        <span class="drop-icon">⇪</span>
+        Drop .xlsx / .csv file here — or click to select
+      </div>
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
-      <div id="jobStatus"></div>
+      <div id="jobStatus" class="job-log"></div>
     </div>
   </div>
 
   <div class="preview-col">
-    <h2>Live preview</h2>
-    <div class="phone" id="phone">
-      <div style="color:#667781; font-size:13px; text-align:center; padding-top:40px;">Preview appears here once a draft is ready</div>
+    <p class="preview-label">Live Render</p>
+    <div class="console" id="consoleFrame">
+      <div class="scanline" id="scanline"></div>
+      <span class="br-tr"></span><span class="br-bl"></span>
+      <div class="phone" id="phone">
+        <div class="phone-empty">Preview materializes here once a draft is ready</div>
+      </div>
     </div>
-    <div id="statusArea"></div>
-    <button class="approve-btn" id="approveBtn" disabled>Approve &amp; submit to Karix</button>
+    <div class="status-stack" id="statusArea"></div>
+    <button class="approve-btn" id="approveBtn" disabled>Approve &amp; Transmit to Karix</button>
   </div>
+
 </div>
 
 <script>
@@ -96,21 +462,57 @@ const inputEl = document.getElementById('input');
 const phoneEl = document.getElementById('phone');
 const statusArea = document.getElementById('statusArea');
 const approveBtn = document.getElementById('approveBtn');
+const scanlineEl = document.getElementById('scanline');
+const linkDot = document.getElementById('linkDot');
+const linkLabel = document.getElementById('linkLabel');
 
 let history = [];
 let currentSpec = null;
 let currentWabaAccountId = null; // set this from your account/org picker
 
+fetch('/api/health').then(r => r.ok ? r.json() : Promise.reject()).then(() => {
+  linkDot.classList.add('ok');
+  linkLabel.textContent = 'Link established';
+}).catch(() => {
+  linkDot.classList.add('err');
+  linkLabel.textContent = 'Link unreachable';
+});
+
 function addMessage(role, text) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + role;
-  div.textContent = text;
-  messagesEl.appendChild(div);
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + role;
+  const tag = document.createElement('span');
+  tag.className = 'msg-tag';
+  tag.textContent = role === 'user' ? 'You' : 'Karix AI';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg ' + role;
+  bubble.textContent = text;
+  row.appendChild(tag);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+  return row;
+}
+
+function addThinking() {
+  const row = document.createElement('div');
+  row.className = 'msg-row assistant';
+  row.id = 'thinkingRow';
+  row.innerHTML = `<span class="msg-tag">Karix AI</span>
+    <div class="msg assistant thinking">
+      <div class="osc"><span></span><span></span><span></span><span></span><span></span></div>
+      <span class="thinking-label">receiving</span>
+    </div>`;
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function removeThinking() {
+  const el = document.getElementById('thinkingRow');
+  if (el) el.remove();
 }
 
 function renderPreview(spec) {
-  if (!spec) { phoneEl.innerHTML = '<div style="color:#667781;font-size:13px;text-align:center;padding-top:40px;">Preview appears here once a draft is ready</div>'; return; }
+  if (!spec) { phoneEl.innerHTML = '<div class="phone-empty">Preview materializes here once a draft is ready</div>'; return; }
   const header = spec.components.find(c => c.type === 'HEADER');
   const body = spec.components.find(c => c.type === 'BODY');
   const footer = spec.components.find(c => c.type === 'FOOTER');
@@ -125,6 +527,10 @@ function renderPreview(spec) {
   }
   html += '</div>';
   phoneEl.innerHTML = html;
+
+  scanlineEl.classList.remove('sweep');
+  void scanlineEl.offsetWidth;
+  scanlineEl.classList.add('sweep');
 }
 
 function renderValidation(validation) {
@@ -133,19 +539,19 @@ function renderValidation(validation) {
   if (validation.errors && validation.errors.length) {
     const box = document.createElement('div');
     box.className = 'status-box error';
-    box.innerHTML = '<strong>Fix before submitting:</strong><br>' + validation.errors.join('<br>');
+    box.innerHTML = '<span class="box-label">Blocked — fix before transmit</span>' + validation.errors.join('<br>');
     statusArea.appendChild(box);
   }
   if (validation.warnings && validation.warnings.length) {
     const box = document.createElement('div');
     box.className = 'status-box warn';
-    box.innerHTML = '<strong>Heads up:</strong><br>' + validation.warnings.join('<br>');
+    box.innerHTML = '<span class="box-label">Advisory</span>' + validation.warnings.join('<br>');
     statusArea.appendChild(box);
   }
   if (validation.valid) {
     const box = document.createElement('div');
     box.className = 'status-box ok';
-    box.textContent = 'Looks good — ready to submit.';
+    box.innerHTML = '<span class="box-label">Diagnostics clear</span>Ready to transmit to Karix.';
     statusArea.appendChild(box);
   }
   approveBtn.disabled = !validation.valid;
@@ -157,20 +563,27 @@ async function sendMessage() {
   addMessage('user', text);
   inputEl.value = '';
   history.push({ role: 'user', content: text });
+  addThinking();
 
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
-  });
-  const data = await res.json();
-  addMessage('assistant', data.reply || '...');
-  history.push({ role: 'assistant', content: data.reply || '' });
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
+    });
+    const data = await res.json();
+    removeThinking();
+    addMessage('assistant', data.reply || '...');
+    history.push({ role: 'assistant', content: data.reply || '' });
 
-  if (data.spec) {
-    currentSpec = data.spec;
-    renderPreview(data.spec);
-    renderValidation(data.validation);
+    if (data.spec) {
+      currentSpec = data.spec;
+      renderPreview(data.spec);
+      renderValidation(data.validation);
+    }
+  } catch (err) {
+    removeThinking();
+    addMessage('assistant', 'Transmission error — could not reach the server.');
   }
 }
 
@@ -180,22 +593,28 @@ inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(
 approveBtn.addEventListener('click', async () => {
   if (!currentSpec) return;
   approveBtn.disabled = true;
-  approveBtn.textContent = 'Submitting...';
-  const res = await fetch('/api/templates/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wabaAccountId: currentWabaAccountId, spec: currentSpec, source: 'chat' }),
-  });
-  const data = await res.json();
-  approveBtn.textContent = 'Approve & submit to Karix';
-  if (res.ok) {
-    addMessage('assistant', 'Submitted to Karix for review. I\'ll show status updates here once it comes back from WhatsApp.');
-  } else {
-    addMessage('assistant', 'Submission failed: ' + (data.error || 'unknown error'));
+  approveBtn.textContent = 'Transmitting…';
+  try {
+    const res = await fetch('/api/templates/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wabaAccountId: currentWabaAccountId, spec: currentSpec, source: 'chat' }),
+    });
+    const data = await res.json();
+    approveBtn.textContent = 'Approve & Transmit to Karix';
+    if (res.ok) {
+      addMessage('assistant', 'Submitted to Karix for review. Status updates will appear here once WhatsApp responds.');
+    } else {
+      addMessage('assistant', 'Submission failed: ' + (data.error || 'unknown error'));
+      approveBtn.disabled = false;
+    }
+  } catch (err) {
+    approveBtn.textContent = 'Approve & Transmit to Karix';
+    approveBtn.disabled = false;
+    addMessage('assistant', 'Transmission error — could not reach the server.');
   }
 });
 
-// ---- tab switching ----
 document.getElementById('tabChat').addEventListener('click', () => {
   document.getElementById('chatView').style.display = 'flex';
   document.getElementById('bulkView').classList.remove('active');
@@ -209,22 +628,24 @@ document.getElementById('tabBulk').addEventListener('click', () => {
   document.getElementById('tabChat').classList.remove('active');
 });
 
-// ---- bulk upload ----
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
 fileInput.addEventListener('change', () => uploadFile(fileInput.files[0]));
-dropZone.addEventListener('dragover', (e) => e.preventDefault());
-dropZone.addEventListener('drop', (e) => { e.preventDefault(); uploadFile(e.dataTransfer.files[0]); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag'); uploadFile(e.dataTransfer.files[0]); });
 
 async function uploadFile(file) {
   if (!file) return;
   const form = new FormData();
   form.append('file', file);
   form.append('wabaAccountId', currentWabaAccountId || '');
+  document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Uploading and queuing…</div>';
   const res = await fetch('/api/bulk-import', { method: 'POST', body: form });
   const data = await res.json();
-  if (!res.ok) { document.getElementById('jobStatus').textContent = 'Upload failed: ' + data.error; return; }
+  if (!res.ok) { document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Upload failed: ' + data.error + '</div>'; return; }
   pollJob(data.jobId);
 }
 
@@ -233,11 +654,9 @@ async function pollJob(jobId) {
   const timer = setInterval(async () => {
     const res = await fetch('/api/bulk-import/' + jobId);
     const data = await res.json();
-    el.innerHTML = `<p>Status: ${data.job.status} — ${data.job.processed_rows}/${data.job.total_rows} rows (${data.job.succeeded_rows} ok, ${data.job.failed_rows} need review)</p>` +
-      data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}: ${r.status}</span><span>${r.error_message || ''}</span></div>`).join('');
-    if (data.job.status === 'completed' || data.job.status === 'completed_with_errors' || data.job.status === 'failed') {
-      clearInterval(timer);
-    }
+    el.innerHTML = `<div class="job-summary">STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
+      data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>`).join('');
+    if (['completed','completed_with_errors','failed'].includes(data.job.status)) clearInterval(timer);
   }, 2000);
 }
 </script>

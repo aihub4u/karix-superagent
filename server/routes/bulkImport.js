@@ -59,6 +59,7 @@ in review_reason, and still emit your best-effort partial spec.`;
 async function normalizeRow(row) {
   const response = await openai.chat.completions.create({
     model: BULK_MODEL,
+    reasoning_effort: 'none', // see note in chat.js — reasoning-tier models need this off to use function tools on chat.completions
     messages: [
       { role: 'system', content: NORMALIZE_SYSTEM_PROMPT },
       { role: 'user', content: `Spreadsheet row:\n${JSON.stringify(row, null, 2)}` },

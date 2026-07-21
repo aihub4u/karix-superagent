@@ -58,6 +58,12 @@ router.post('/chat', async (req, res) => {
   try {
     const response = await openai.chat.completions.create({
       model: CHAT_MODEL,
+      reasoning_effort: 'none', // reasoning + function tools isn't supported together on
+                                  // /v1/chat/completions for reasoning-tier models like gpt-5.6-*;
+                                  // this agent's job (slot-filling a template) doesn't need deep
+                                  // reasoning anyway. Remove this line (and switch to the /v1/responses
+                                  // API instead, which does support reasoning + tools) if you want the
+                                  // model reasoning harder about ambiguous requests later.
       messages,
       tools: [EMIT_TOOL],
     });
