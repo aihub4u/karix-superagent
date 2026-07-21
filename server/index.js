@@ -42,5 +42,26 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
+/**
+ * Global error handler — the last line of defense. Routes wrapped in
+ * asyncHandler() forward errors here via next(err) instead of crashing the
+ * process. Must be registered after all other app.use()/routes.
+ */
+app.use((err, req, res, next) => {
+  console.error('Unhandled route error:', err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: 'internal_error', detail: err.message });
+});
+
+/**
+ * Belt-and-suspenders: if something outside Express's request cycle still
+ * throws an unhandled rejection (e.g. a bug in the background bulk-import
+ * loop that isn't already caught), log it instead of letting Node's default
+ * behavior silently kill the process and take down every in-flight request.
+ */
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`karix-superagent listening on :${PORT}`));

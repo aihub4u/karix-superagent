@@ -6,6 +6,7 @@ const pool = require('../db/pool');
 const { validateTemplate } = require('../services/templateValidator');
 const { KarixClient, KarixApiError } = require('../services/karixClient');
 const { decryptToken } = require('../services/crypto');
+const { asyncHandler } = require('../middleware/asyncHandler');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -80,7 +81,7 @@ async function normalizeRow(row) {
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ---- Upload + kick off an async job ---------------------------------------
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', upload.single('file'), asyncHandler(async (req, res) => {
   const { organizationId, userId } = req.auth;
   const { wabaAccountId } = req.body;
   if (!req.file) return res.status(400).json({ error: 'file is required' });
@@ -95,7 +96,7 @@ router.post('/', upload.single('file'), async (req, res) => {
   const jobInsert = await pool.query(
     `INSERT INTO bulk_import_jobs (organization_id, waba_account_id, uploaded_by, file_name, total_rows, status)
      VALUES ($1,$2,$3,$4,$5,'queued') RETURNING id`,
-    [organizationId, wabaAccountId, userId, req.file.originalname, rows.length]
+    [organizationId, wabaAccountId, userId || null, req.file.originalname, rows.length]
   );
   const jobId = jobInsert.rows[0].id;
 
@@ -112,10 +113,10 @@ router.post('/', upload.single('file'), async (req, res) => {
   processJob(jobId, organizationId).catch((err) => console.error('bulk import job failed', jobId, err));
 
   res.json({ jobId, totalRows: rows.length, status: 'queued' });
-});
+}));
 
 // ---- Job status polling -----------------------------------------------------
-router.get('/:jobId', async (req, res) => {
+router.get('/:jobId', asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
   const { rows } = await pool.query(`SELECT * FROM bulk_import_jobs WHERE id=$1 AND organization_id=$2`, [req.params.jobId, organizationId]);
   if (!rows.length) return res.status(404).json({ error: 'not_found' });
@@ -124,7 +125,7 @@ router.get('/:jobId', async (req, res) => {
     [req.params.jobId]
   );
   res.json({ job: rows[0], rows: rowDetail.rows });
-});
+}));
 
 async function processJob(jobId, organizationId) {
   await pool.query(`UPDATE bulk_import_jobs SET status='running' WHERE id=$1`, [jobId]);

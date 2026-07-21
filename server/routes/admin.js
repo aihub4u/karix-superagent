@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const pool = require('../db/pool');
 const { encryptToken } = require('../services/crypto');
 
@@ -49,12 +50,13 @@ router.post('/encrypt-token', (req, res) => {
  *                            which Render gives you by default)
  * }
  *
- * Upserts an organization (by slug derived from orgName) and a waba_account
- * (by organization_id + wabaId), encrypting the token before it touches the
- * database. Meant for the in-app "Setup" panel so testing/onboarding a new
- * client doesn't require the SQL editor or Postman.
+ * Upserts an organization (by slug derived from orgName), a waba_account
+ * (by organization_id + wabaId), and a placeholder user row — this app has
+ * no real login system yet, but templates.created_by and
+ * bulk_import_jobs.uploaded_by both have foreign keys into `users`, so a
+ * real (if placeholder) user row has to exist or those inserts fail.
  *
- * Returns: { organizationId, wabaAccountId, orgName, wabaId }
+ * Returns: { organizationId, wabaAccountId, userId, orgName, wabaId }
  */
 router.post('/quick-setup', async (req, res) => {
   if (!checkAdminSecret(req, res)) return;
@@ -87,7 +89,22 @@ router.post('/quick-setup', async (req, res) => {
     );
     const wabaAccountId = wabaResult.rows[0].id;
 
-    res.json({ organizationId, wabaAccountId, orgName, wabaId });
+    // Placeholder user tied to this org+slug so foreign keys elsewhere
+    // (templates.created_by, bulk_import_jobs.uploaded_by) always resolve.
+    // Not a real login — there's no password anyone can use to sign in with
+    // this hash, it just satisfies the FK until real auth exists.
+    const placeholderEmail = `setup+${slug}@karix.local`;
+    const placeholderHash = crypto.randomBytes(24).toString('hex');
+    const userResult = await pool.query(
+      `INSERT INTO users (organization_id, email, password_hash, role)
+       VALUES ($1, $2, $3, 'client_admin')
+       ON CONFLICT (email) DO UPDATE SET organization_id = EXCLUDED.organization_id
+       RETURNING id`,
+      [organizationId, placeholderEmail, placeholderHash]
+    );
+    const userId = userResult.rows[0].id;
+
+    res.json({ organizationId, wabaAccountId, userId, orgName, wabaId });
   } catch (err) {
     console.error('quick-setup failed', err);
     res.status(500).json({ error: 'quick_setup_failed', detail: err.message });

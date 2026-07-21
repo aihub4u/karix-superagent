@@ -589,7 +589,6 @@ function loadAccount() {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (raw) account = JSON.parse(raw);
   } catch { account = null; }
-  if (account && !account.userId) account.userId = crypto.randomUUID();
   renderAccountButton();
 }
 function saveAccount() {
@@ -874,7 +873,7 @@ setupSubmit.addEventListener('click', async () => {
       wabaAccountId: data.wabaAccountId,
       orgName: data.orgName,
       wabaId: data.wabaId,
-      userId: (account && account.userId) || crypto.randomUUID(),
+      userId: data.userId,
     };
     saveAccount();
     setupMsg.className = 'modal-msg ok show';

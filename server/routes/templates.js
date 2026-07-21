@@ -4,6 +4,7 @@ const pool = require('../db/pool');
 const { KarixClient, KarixApiError } = require('../services/karixClient');
 const { validateTemplate, canEdit } = require('../services/templateValidator');
 const { decryptToken } = require('../services/crypto');
+const { asyncHandler } = require('../middleware/asyncHandler');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 16 * 1024 * 1024 } });
@@ -25,7 +26,7 @@ async function getKarixClientForWaba(wabaAccountId, organizationId) {
 }
 
 // ---- List templates the platform knows about (from our DB, fast) --------
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
   const { rows } = await pool.query(
     `SELECT id, template_name, category, language, status, karix_template_id, created_at, updated_at
@@ -33,12 +34,16 @@ router.get('/', async (req, res) => {
     [organizationId]
   );
   res.json({ templates: rows });
-});
+}));
 
 // ---- Submit a validated spec (from chat or bulk import) to Karix --------
-router.post('/submit', async (req, res) => {
+router.post('/submit', asyncHandler(async (req, res) => {
   const { organizationId, userId } = req.auth;
   const { wabaAccountId, spec, source = 'chat' } = req.body;
+
+  if (!organizationId || !wabaAccountId || !spec) {
+    return res.status(400).json({ error: 'organizationId (via auth), wabaAccountId, and spec are all required' });
+  }
 
   const { valid, errors, warnings } = validateTemplate(spec);
   if (!valid) return res.status(422).json({ error: 'validation_failed', errors, warnings });
@@ -50,12 +55,18 @@ router.post('/submit', async (req, res) => {
     return res.status(404).json({ error: err.message });
   }
 
-  const insert = await pool.query(
-    `INSERT INTO templates (organization_id, waba_account_id, created_by, source, template_name, category, language, spec_json, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending_review') RETURNING id`,
-    [organizationId, wabaAccountId, userId, source, spec.template_name, spec.category, spec.language, spec]
-  );
-  const templateRowId = insert.rows[0].id;
+  let templateRowId;
+  try {
+    const insert = await pool.query(
+      `INSERT INTO templates (organization_id, waba_account_id, created_by, source, template_name, category, language, spec_json, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending_review') RETURNING id`,
+      [organizationId, wabaAccountId, userId || null, source, spec.template_name, spec.category, spec.language, spec]
+    );
+    templateRowId = insert.rows[0].id;
+  } catch (err) {
+    console.error('templates insert failed', err);
+    return res.status(500).json({ error: 'db_insert_failed', detail: err.message });
+  }
 
   try {
     const { body } = await client.createTemplate(spec);
@@ -72,10 +83,10 @@ router.post('/submit', async (req, res) => {
     );
     return res.status(502).json({ error: 'karix_submit_failed', detail });
   }
-});
+}));
 
 // ---- Refresh status for one template from Karix --------------------------
-router.get('/:id/refresh', async (req, res) => {
+router.get('/:id/refresh', asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
   const { rows } = await pool.query(`SELECT * FROM templates WHERE id=$1 AND organization_id=$2`, [req.params.id, organizationId]);
   if (!rows.length) return res.status(404).json({ error: 'not_found' });
@@ -86,10 +97,10 @@ router.get('/:id/refresh', async (req, res) => {
   const { body } = await client.getTemplate(row.karix_template_id);
   // NOTE: map Karix's actual status field name once confirmed against a live response.
   res.json({ karixResponse: body });
-});
+}));
 
 // ---- Delete ---------------------------------------------------------------
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
   const { rows } = await pool.query(`SELECT * FROM templates WHERE id=$1 AND organization_id=$2`, [req.params.id, organizationId]);
   if (!rows.length) return res.status(404).json({ error: 'not_found' });
@@ -101,10 +112,10 @@ router.delete('/:id', async (req, res) => {
   }
   await pool.query(`UPDATE templates SET status='deleted', updated_at=now() WHERE id=$1`, [row.id]);
   res.json({ ok: true });
-});
+}));
 
 // ---- Media upload for HEADER (image/video/document) before create/edit --
-router.post('/media/:wabaAccountId', upload.single('file'), async (req, res) => {
+router.post('/media/:wabaAccountId', upload.single('file'), asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
   const { fileType } = req.body; // 'image' | 'video' | 'document'
   if (!req.file) return res.status(400).json({ error: 'file is required' });
@@ -122,6 +133,6 @@ router.post('/media/:wabaAccountId', upload.single('file'), async (req, res) => 
     const detail = err instanceof KarixApiError ? { status: err.status, body: err.body } : { message: err.message };
     res.status(502).json({ error: 'media_upload_failed', detail });
   }
-});
+}));
 
 module.exports = router;
