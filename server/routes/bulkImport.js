@@ -24,7 +24,14 @@ const MIN_GAP_MS = Math.ceil(3_600_000 / 90); // stay under 100/hr with margin
 // columns and free-text cells; it does NOT require the user to already know
 // Karix's JSON shape.
 // name | category | language | header_type | header_text | body_text |
-// footer | button_1_type | button_1_value | button_2_type | button_2_value | variable_examples
+// variable_examples | footer |
+// button_1_type | button_1_label | button_1_value |
+// button_2_type | button_2_label | button_2_value
+//
+// button_1_label / button_2_label = the text shown ON the button (e.g. "Track Order").
+// button_1_value / button_2_value = the destination: a URL (for URL buttons),
+//   a phone number (for PHONE_NUMBER buttons), or the reply text itself
+//   (for QUICK_REPLY buttons, where label and value are typically the same).
 
 const NORMALIZE_TOOL = {
   type: 'function',
@@ -56,6 +63,18 @@ needs_review=true so a human double-checks. AUTHENTICATION templates must
 never have an IMAGE/VIDEO/DOCUMENT header. If the row is too vague to
 proceed (e.g. no body text at all), set needs_review=true and explain why
 in review_reason, and still emit your best-effort partial spec.
+
+Button fields: if the row has button_1_label / button_2_label columns,
+that value is the button's visible text (the "text" field on the button
+object) — use it as-is, don't invent a different label. button_1_value /
+button_2_value is the destination: a URL for URL buttons, a phone number
+for PHONE_NUMBER buttons, or the reply text for QUICK_REPLY buttons (where
+label and value are usually the same thing, so if only one of the two
+columns is filled for a QUICK_REPLY row, use it for both). If a button has
+a type and a value but genuinely no label anywhere in the row, invent a
+short, obvious one from context (e.g. "Track Order" for a tracking URL)
+and don't flag needs_review just for that — inventing a button label from
+clear context isn't the kind of ambiguity that needs a human check.
 
 Two hard rules confirmed by real Meta API rejections (not documented in
 Karix's own docs, but WhatsApp enforces them regardless):
