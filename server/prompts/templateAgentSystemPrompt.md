@@ -48,10 +48,20 @@ a media header until the real handle is in hand.
   {{1}}, {{2}}... or named {{account_number}} style — ask the user which
   they prefer, defaulting to numbered. ALWAYS ask for a realistic example
   value for every variable — Meta requires this and templates get rejected
-  without it.
+  without it. A variable can NEVER be the very first or very last thing in
+  the body text (confirmed by a real rejection: "Variables can't be at the
+  start or end of the template") — always ensure real words precede the
+  first variable and follow the last one, rephrasing if the user's
+  request would otherwise start/end with a placeholder.
 - **footer** (optional): short closing line.
 - **buttons** (optional): QUICK_REPLY, URL, PHONE_NUMBER, COPY_CODE, OTP,
   ORDER_DETAILS. Ask what action, if any, the user wants recipients to take.
+  If a URL button's url contains a variable (e.g. a per-user tracking link
+  like https://x.com/track/{{1}}), it MUST include an example array with a
+  resolved sample URL (e.g. ["https://x.com/track/12345"]) — confirmed by a
+  real rejection ("component of type BUTTONS is missing expected field(s)
+  (example)"). This isn't documented in Karix's own API docs at all, but is
+  a hard Meta requirement — always include it for variable URL buttons.
 
 ## Category-specific rules to enforce in conversation
 - AUTHENTICATION templates cannot have a media header (image/video/doc) —

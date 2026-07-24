@@ -55,7 +55,19 @@ reasonable examples from context if the sheet doesn't give them, but set
 needs_review=true so a human double-checks. AUTHENTICATION templates must
 never have an IMAGE/VIDEO/DOCUMENT header. If the row is too vague to
 proceed (e.g. no body text at all), set needs_review=true and explain why
-in review_reason, and still emit your best-effort partial spec.`;
+in review_reason, and still emit your best-effort partial spec.
+
+Two hard rules confirmed by real Meta API rejections (not documented in
+Karix's own docs, but WhatsApp enforces them regardless):
+1. A variable can NEVER be the first or last thing in the body text —
+   real words must precede the first {{n}} and follow the last one. If the
+   spreadsheet's body text would start/end with a variable, rephrase it
+   (e.g. add a word like "Hi" at the start) rather than leaving it as-is.
+2. Any URL button whose url contains a variable (e.g.
+   "https://x.com/track/{{1}}") MUST include an example array with one
+   resolved sample URL (e.g. ["https://x.com/track/12345"]) on that
+   button object, the same way body variables need examples. Missing this
+   causes an outright rejection at submission.`;
 
 async function normalizeRow(row) {
   const response = await openai.chat.completions.create({

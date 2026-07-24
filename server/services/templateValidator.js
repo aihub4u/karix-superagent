@@ -89,6 +89,17 @@ function validateTemplate(spec) {
                 'Meta requires example values for every variable or the template will be rejected.'
               );
             }
+            // Confirmed by a real Meta rejection (error_subcode 2388299,
+            // "Variables can't be at the start or end of the template"):
+            // a placeholder cannot be the very first or very last thing in
+            // the body — there must be real text on both sides.
+            const trimmed = c.text.trim();
+            if (/^{{\s*[\w]+\s*}}/.test(trimmed)) {
+              errors.push('BODY text cannot start with a variable placeholder — Meta requires real text before the first {{variable}}.');
+            }
+            if (/{{\s*[\w]+\s*}}$/.test(trimmed)) {
+              errors.push('BODY text cannot end with a variable placeholder — Meta requires real text after the last {{variable}}.');
+            }
           }
         }
         break;
@@ -107,6 +118,18 @@ function validateTemplate(spec) {
             errors.push(`Button type "${b.type}" is invalid. Must be one of ${VALID_BUTTON_TYPES.join(', ')}.`);
           }
           if (b.type === 'URL' && !b.url) errors.push('URL button must include a url.');
+          if (b.type === 'URL' && b.url && /{{\s*[\w]+\s*}}/.test(b.url) && (!b.example || !b.example.length)) {
+            // Confirmed by a real Meta rejection (error_subcode 2388043,
+            // "component of type BUTTONS is missing expected field(s)
+            // (example)"): a URL button whose url contains a variable
+            // needs an example array with a resolved sample URL, the same
+            // way body text variables need example values. Not documented
+            // in Karix's own docs at all.
+            errors.push(
+              `URL button's url contains a variable but has no "example" array — add example: ["<resolved sample URL>"] ` +
+              `(e.g. if url is "https://example.com/track/{{1}}", example could be ["https://example.com/track/12345"]).`
+            );
+          }
           if (b.type === 'PHONE_NUMBER' && !b.phone_number) errors.push('PHONE_NUMBER button must include phone_number.');
           if (b.type === 'COPY_CODE' && (!b.example || !b.example.length)) {
             errors.push('COPY_CODE button must include an example code value.');

@@ -260,15 +260,16 @@
   }
   .job-card .job-summary { color: var(--mist); margin-bottom: 10px; letter-spacing: 0.02em; }
   .job-card .job-summary b { color: var(--cyan); }
-  .job-card .job-row {
-    display: flex; justify-content: space-between; gap: 12px;
-    padding: 6px 0; border-bottom: 1px solid var(--line);
-    color: var(--mist);
-  }
-  .job-card .job-row:last-child { border-bottom: none; }
+  .job-card .job-row-group { border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 6px; }
+  .job-card .job-row-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .job-card .job-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0 2px; color: var(--mist); }
   .job-card .row-status { text-transform: uppercase; letter-spacing: 0.06em; }
   .job-card .row-status.submitted { color: var(--mint); }
   .job-card .row-status.failed, .job-card .row-status.needs_review { color: var(--amber); }
+  .job-card .job-row-reason {
+    color: var(--mist); font-size: 11px; line-height: 1.5;
+    word-break: break-word;
+  }
 
   .preview-col {
     padding: 28px 24px;
@@ -621,6 +622,10 @@ fetch('/api/health').then(r => r.ok ? r.json() : Promise.reject()).then(() => {
   linkLabel.textContent = 'Link unreachable';
 });
 
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function addMessage(role, text) {
   const row = document.createElement('div');
   row.className = 'msg-row ' + role;
@@ -900,7 +905,10 @@ async function pollJobInline(jobId, fileName) {
     const res = await fetch('/api/bulk-import/' + jobId, { headers: authHeaders() });
     const data = await res.json();
     cardEl.innerHTML = `<div class="job-summary">${fileName} — STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
-      data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>`).join('');
+      data.rows.map(r => {
+        const reason = r.error_message ? `<div class="job-row-reason">${escapeHtml(r.error_message)}</div>` : '';
+        return `<div class="job-row-group"><div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>${reason}</div>`;
+      }).join('');
     messagesEl.scrollTop = messagesEl.scrollHeight;
     if (['completed', 'completed_with_errors', 'failed'].includes(data.job.status)) clearInterval(timer);
   }, 2000);
