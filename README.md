@@ -38,25 +38,33 @@ quota — extend it as you hit real-world edge cases.
 
 Built directly from the 60-page Karix RCM Template API doc you provided —
 endpoints, field names, category rules, and character/rate limits are
-taken verbatim from there. Confirmed and fixed against real API calls
-since then:
+taken verbatim from there. Confirmed against real API calls since then:
 
-- **Media upload `file_type` field** — the doc's parameter table says
-  valid values are the generic categories `image, video, document`, but
-  the doc's own worked example sends actual MIME types instead
-  (`image/jpg`, `video/mp4`). The example was correct and the table was
-  misleading: sending the category causes Meta to reject the resulting
-  file handle downstream at template-creation time with an opaque "file
-  type not supported" error, even for genuinely valid files. `karixClient.js`
-  now sends the real MIME type, plus a `fileName` form field the example
-  included but the table never mentioned.
+- **Media upload `file_type` field** — confirmed working as the generic
+  category (`image`/`video`/`document`), matching the doc's parameter
+  table. An earlier version of this code briefly switched to sending the
+  actual MIME type instead, based on a different worked example elsewhere
+  in the doc — that turned out to be wrong and broke the upload step
+  outright (Karix rejected it before ever reaching Meta). Reverted;
+  `file_type` sends the category.
 - **Media upload response shape** — confirmed via a live call:
   `{ response: { fileHandle: "4::..." } }`. `templates.js`'s media route
   and `public/index.html`'s upload handler both read from this path
   (with fallbacks to `header_handle`/`handle` at the top level in case the
   shape varies by account/region).
 
-Still unconfirmed and worth checking before wider production use:
+**Still open / unsolved:** a real, successfully-uploaded file handle gets
+rejected by *Meta* (not Karix) at template-creation time with
+`"error_user_title":"File type not supported"` (OAuthException, subcode
+2388084). This is a separate step from the upload itself, which does
+succeed and does return a valid-looking handle. Not yet root-caused — next
+things worth trying: (a) a plain baseline-encoded JPEG with no alpha
+channel/ICC profile/progressive encoding, to rule out an encoding quirk
+Meta's media pipeline is picky about, or (b) contacting Karix support
+directly with the `fbtrace_id` from the error response, since that's
+Meta-traceable information their support tooling can look up.
+
+Also still unconfirmed:
 
 1. **Auth header name** — most examples show `Authentication: Bearer …`,
    a couple show `Authorization`. Currently set to `Authentication` in
