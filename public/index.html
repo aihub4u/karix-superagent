@@ -948,8 +948,28 @@ async function handleMediaAttach(file) {
       addMessage('assistant', 'Media upload failed: ' + (data.error || 'unknown error'));
       return;
     }
-    const handleRaw = data.karixResponse && (data.karixResponse.header_handle || data.karixResponse.handle);
-    const handle = Array.isArray(handleRaw) ? handleRaw[0] : (handleRaw || JSON.stringify(data.karixResponse));
+    console.log('Karix media upload response:', data.karixResponse);
+
+    // Confirmed shape from a live call: { response: { fileHandle: "4::..." } }
+    // Keep the older guesses as fallbacks in case Karix's shape varies by
+    // account/region, but this is the one that's actually been observed.
+    const handle = data.karixResponse && (
+      (data.karixResponse.response && data.karixResponse.response.fileHandle) ||
+      data.karixResponse.header_handle ||
+      data.karixResponse.handle
+    );
+    const normalizedHandle = Array.isArray(handle) ? handle[0] : handle;
+
+    if (!normalizedHandle) {
+      // Shouldn't happen now that the confirmed shape (response.fileHandle)
+      // is checked first, but keep this guard in case Karix's shape varies
+      // by account/region/media type — surface the raw response instead of
+      // silently guessing, which previously caused a mismatched handle.
+      addMessage('assistant',
+        `Upload succeeded, but I couldn't find a recognizable handle field in Karix's response — this needs a code fix rather than guessing. Raw response:\n\n${JSON.stringify(data.karixResponse, null, 2)}`
+      );
+      return;
+    }
 
     // The handle Karix returns is only usable by Karix's own API — it's not a
     // URL a browser can display. Keep the actual file locally (as an object
@@ -957,10 +977,10 @@ async function handleMediaAttach(file) {
     // instead of a placeholder, keyed by the same handle the model will put
     // into the spec's example.header_handle.
     if (fileType === 'image' || fileType === 'video') {
-      mediaPreviewByHandle[handle] = { url: URL.createObjectURL(file), type: fileType, name: file.name };
+      mediaPreviewByHandle[normalizedHandle] = { url: URL.createObjectURL(file), type: fileType, name: file.name };
     }
 
-    pendingMediaNote = `[System note: the user just attached a ${fileType} file named "${file.name}". It has been uploaded to Karix and the resulting header handle is: ${handle}. If they want this used as a HEADER component, set format to ${fileType.toUpperCase()} and example.header_handle to [this value] (an array containing the handle string).]`;
+    pendingMediaNote = `[System note: the user just attached a ${fileType} file named "${file.name}". It has been uploaded to Karix and the resulting header handle is: ${normalizedHandle}. If they want this used as a HEADER component, set format to ${fileType.toUpperCase()} and example.header_handle to [this value] (an array containing the handle string).]`;
     addMessage('assistant', `Got it — that ${fileType} is uploaded and ready. Tell me what message should go with it and I'll build the template with it as the header.`);
   } catch (err) {
     removeThinking();
