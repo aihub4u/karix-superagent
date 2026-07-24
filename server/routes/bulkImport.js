@@ -67,7 +67,15 @@ Karix's own docs, but WhatsApp enforces them regardless):
    "https://x.com/track/{{1}}") MUST include an example array with one
    resolved sample URL (e.g. ["https://x.com/track/12345"]) on that
    button object, the same way body variables need examples. Missing this
-   causes an outright rejection at submission.`;
+   causes an outright rejection at submission.
+
+Do not set needs_review=true just to double-check something that's
+already unambiguous in the row. A button with both a clear label (e.g.
+"Shop Now") and a complete static url is DONE — don't flag it to "confirm
+the intended destination" or similar; only flag a button if a required
+field is genuinely missing (e.g. a URL button with no url at all) or the
+row's intent is truly unclear. Reserve needs_review for real ambiguity or
+invented content, not for restating that a field exists and is filled in.`;
 
 async function normalizeRow(row) {
   const response = await openai.chat.completions.create({
@@ -83,11 +91,41 @@ async function normalizeRow(row) {
 
   const toolCall = response.choices[0].message.tool_calls?.[0];
   if (!toolCall) return null;
+  let spec;
   try {
-    return JSON.parse(toolCall.function.arguments);
+    spec = JSON.parse(toolCall.function.arguments);
   } catch {
     return null;
   }
+  return backfillBodyExamples(spec, row);
+}
+
+/**
+ * The AI is instructed to always include a BODY example block when the
+ * body has {{n}} placeholders, but it doesn't do this 100% reliably (it's
+ * one instruction among many in a single generation call). The
+ * spreadsheet's own `variable_examples` column is a deterministic source
+ * of truth for the same information, so use it directly instead of only
+ * hoping the model remembered — this removes an entire class of
+ * needs_review flags and rejected submissions for a purely mechanical gap.
+ */
+function backfillBodyExamples(spec, row) {
+  if (!spec || !Array.isArray(spec.components)) return spec;
+  const bodyComp = spec.components.find((c) => c.type === 'BODY');
+  if (!bodyComp || !bodyComp.text) return spec;
+
+  const hasPlaceholders = /{{\s*[\w]+\s*}}/.test(bodyComp.text);
+  const hasExample = bodyComp.example && (bodyComp.example.body_text || bodyComp.example.body_text_named_params);
+  if (!hasPlaceholders || hasExample) return spec;
+
+  const rawExamples = row.variable_examples || row.variableExamples || row['variable examples'];
+  if (!rawExamples) return spec;
+
+  const values = String(rawExamples).split(',').map((v) => v.trim()).filter(Boolean);
+  if (!values.length) return spec;
+
+  bodyComp.example = { body_text: [values] };
+  return spec;
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
