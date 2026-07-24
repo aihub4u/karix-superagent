@@ -155,8 +155,9 @@ async function processJob(jobId, organizationId) {
 
   for (const row of rowsRes.rows) {
     const startedAt = Date.now();
+    let spec = null;
     try {
-      const spec = await normalizeRow(row.raw_row);
+      spec = await normalizeRow(row.raw_row);
       if (!spec) throw new Error('AI normalization returned nothing');
 
       const { valid, errors } = validateTemplate(spec);
@@ -187,7 +188,10 @@ async function processJob(jobId, organizationId) {
       }
     } catch (err) {
       const message = err instanceof KarixApiError ? `Karix ${err.status}: ${JSON.stringify(err.body)}` : err.message;
-      await pool.query(`UPDATE bulk_import_rows SET status='failed', error_message=$1 WHERE id=$2`, [message, row.id]);
+      // Always save whatever spec was generated (even null), so a Karix-level
+      // rejection is fully debuggable afterward instead of leaving resolved_spec
+      // blank — `spec` used to be scoped inside the try block and unreachable here.
+      await pool.query(`UPDATE bulk_import_rows SET status='failed', resolved_spec=$1, error_message=$2 WHERE id=$3`, [spec, message, row.id]);
       failed += 1;
     }
 

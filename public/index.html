@@ -270,6 +270,10 @@
     color: var(--mist); font-size: 11px; line-height: 1.5;
     word-break: break-word;
   }
+  .job-card .job-row-spec {
+    color: var(--cyan); font-size: 11px; line-height: 1.5;
+    margin-top: 4px; word-break: break-word; opacity: 0.85;
+  }
 
   .preview-col {
     padding: 28px 24px;
@@ -907,7 +911,14 @@ async function pollJobInline(jobId, fileName) {
     cardEl.innerHTML = `<div class="job-summary">${fileName} — STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
       data.rows.map(r => {
         const reason = r.error_message ? `<div class="job-row-reason">${escapeHtml(r.error_message)}</div>` : '';
-        return `<div class="job-row-group"><div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>${reason}</div>`;
+        let specLine = '';
+        if (r.resolved_spec && r.status !== 'submitted') {
+          const bodyComp = r.resolved_spec.components && r.resolved_spec.components.find(c => c.type === 'BODY');
+          if (bodyComp && bodyComp.text) {
+            specLine = `<div class="job-row-spec">Body: "${escapeHtml(bodyComp.text)}"</div>`;
+          }
+        }
+        return `<div class="job-row-group"><div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>${reason}${specLine}</div>`;
       }).join('');
     messagesEl.scrollTop = messagesEl.scrollHeight;
     if (['completed', 'completed_with_errors', 'failed'].includes(data.job.status)) clearInterval(timer);
