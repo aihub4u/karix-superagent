@@ -326,6 +326,11 @@
   .phone-empty { color: #8894a0; font-size: 12.5px; text-align: center; padding-top: 46px; font-family: var(--font-body); }
   .bubble { background: #dcf8c6; border-radius: 8px; padding: 10px 12px; font-size: 13px; max-width: 92%; box-shadow: 0 1px 1px rgba(0,0,0,.12); font-family: var(--font-body); color: #111b21; }
   .bubble .hdr { font-weight: 700; margin-bottom: 4px; }
+  .bubble .hdr-media { width: 100%; max-height: 160px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; display: block; }
+  .bubble .hdr-placeholder {
+    background: rgba(0,0,0,0.06); border: 1px dashed rgba(0,0,0,0.2); border-radius: 6px;
+    padding: 14px; text-align: center; font-size: 12.5px; color: #54656f; margin-bottom: 6px;
+  }
   .bubble .ftr { color: #667781; font-size: 11px; margin-top: 6px; }
   .bubble .btns { margin-top: 8px; border-top: 1px solid #cfe8bd; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
   .bubble .btn { color: #00a5f4; text-align: center; font-size: 13px; padding: 4px; }
@@ -531,7 +536,7 @@
       <button id="attachBtn" class="attach-btn" type="button" title="Attach a file">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.20 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
       </button>
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,image/*,video/*,application/pdf" style="display:none" />
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,image/jpeg,image/png,video/mp4,video/3gpp,application/pdf" style="display:none" />
       <input id="input" placeholder="Describe the template you want to transmit…" />
       <button id="send">Transmit
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 11L21 3L13 21L11 13L3 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
@@ -649,6 +654,32 @@ function removeThinking() {
   if (el) el.remove();
 }
 
+function renderHeaderHtml(header) {
+  if (header.format === 'TEXT' || !header.format) {
+    return `<div class="hdr">${(header.text || '').replace(/</g, '&lt;')}</div>`;
+  }
+
+  const handleArr = header.example && header.example.header_handle;
+  const handle = Array.isArray(handleArr) ? handleArr[0] : handleArr;
+  const local = handle && mediaPreviewByHandle[handle];
+
+  if (header.format === 'IMAGE') {
+    if (local) return `<img class="hdr-media" src="${local.url}" alt="Header image" />`;
+    return `<div class="hdr-placeholder">🖼️ Image header${local ? '' : ' (attach an image to preview it here)'}</div>`;
+  }
+  if (header.format === 'VIDEO') {
+    if (local) return `<video class="hdr-media" src="${local.url}" controls></video>`;
+    return `<div class="hdr-placeholder">🎬 Video header (attach a video to preview it here)</div>`;
+  }
+  if (header.format === 'DOCUMENT') {
+    return `<div class="hdr-placeholder">📄 Document header${local ? ': ' + local.name : ''}</div>`;
+  }
+  if (header.format === 'LOCATION') {
+    return `<div class="hdr-placeholder">📍 Location header</div>`;
+  }
+  return `<div class="hdr-placeholder">${header.format} header</div>`;
+}
+
 function renderPreview(spec) {
   if (!spec) { phoneEl.innerHTML = '<div class="phone-empty">Preview materializes here once a draft is ready</div>'; return; }
   const header = spec.components.find(c => c.type === 'HEADER');
@@ -657,7 +688,7 @@ function renderPreview(spec) {
   const buttons = spec.components.find(c => c.type === 'BUTTONS');
 
   let html = '<div class="bubble">';
-  if (header) html += `<div class="hdr">${header.text || (header.format + ' header')}</div>`;
+  if (header) html += renderHeaderHtml(header);
   if (body) html += `<div>${(body.text || '').replace(/</g,'&lt;')}</div>`;
   if (footer) html += `<div class="ftr">${footer.text}</div>`;
   if (buttons && buttons.buttons) {
@@ -766,6 +797,7 @@ approveBtn.addEventListener('click', async () => {
 // ---- file attach (spreadsheet -> bulk import job card; image/video/doc -> media upload for header) ----
 const SPREADSHEET_EXT = ['.xlsx', '.xls', '.csv'];
 let pendingMediaNote = null; // set after a successful media upload; folded into the next chat message
+const mediaPreviewByHandle = {}; // karix header_handle -> { url, type, name } for locally-attached files, so the preview can show the real image instead of a placeholder
 
 function isSpreadsheet(file) {
   const name = file.name.toLowerCase();
@@ -843,10 +875,29 @@ async function pollJobInline(jobId, fileName) {
 }
 
 // ---- image/video/document attach -> upload as a template HEADER media handle ----
+// WhatsApp template headers only accept these exact MIME types — much
+// narrower than what phones/browsers commonly export (no WEBP, HEIC, GIF,
+// DOCX, MOV, etc.). Attaching anything else fails at Meta's Graph API with
+// error_subcode 2388084 ("File type not supported") — catch it here instead
+// of round-tripping to Karix and Meta first.
+const SUPPORTED_HEADER_MIME = {
+  image: ['image/jpeg', 'image/png'],
+  video: ['video/mp4', 'video/3gpp'],
+  document: ['application/pdf'],
+};
+
 async function handleMediaAttach(file) {
   let fileType = 'document';
   if (file.type.startsWith('image/')) fileType = 'image';
   else if (file.type.startsWith('video/')) fileType = 'video';
+
+  const allowed = SUPPORTED_HEADER_MIME[fileType];
+  if (!allowed.includes(file.type)) {
+    addAttachmentUserBubble(file, `${fileType} for header`);
+    const friendly = { image: 'JPEG or PNG', video: 'MP4 or 3GPP', document: 'PDF' }[fileType];
+    addMessage('assistant', `WhatsApp template headers only accept ${friendly} for ${fileType} headers — "${file.name}" is ${file.type || 'an unrecognized format'}. Please convert it and attach again.`);
+    return;
+  }
 
   addAttachmentUserBubble(file, `${fileType} for header`);
   addThinking();
@@ -865,8 +916,19 @@ async function handleMediaAttach(file) {
       addMessage('assistant', 'Media upload failed: ' + (data.error || 'unknown error'));
       return;
     }
-    const handle = data.karixResponse && (data.karixResponse.header_handle || data.karixResponse.handle || JSON.stringify(data.karixResponse));
-    pendingMediaNote = `[System note: the user just attached a ${fileType} file named "${file.name}". It has been uploaded to Karix and the resulting header handle is: ${handle}. If they want this used as a HEADER component, set format to ${fileType.toUpperCase()} and example.header_handle to this value.]`;
+    const handleRaw = data.karixResponse && (data.karixResponse.header_handle || data.karixResponse.handle);
+    const handle = Array.isArray(handleRaw) ? handleRaw[0] : (handleRaw || JSON.stringify(data.karixResponse));
+
+    // The handle Karix returns is only usable by Karix's own API — it's not a
+    // URL a browser can display. Keep the actual file locally (as an object
+    // URL) so the WhatsApp-style preview can show the real image/video
+    // instead of a placeholder, keyed by the same handle the model will put
+    // into the spec's example.header_handle.
+    if (fileType === 'image' || fileType === 'video') {
+      mediaPreviewByHandle[handle] = { url: URL.createObjectURL(file), type: fileType, name: file.name };
+    }
+
+    pendingMediaNote = `[System note: the user just attached a ${fileType} file named "${file.name}". It has been uploaded to Karix and the resulting header handle is: ${handle}. If they want this used as a HEADER component, set format to ${fileType.toUpperCase()} and example.header_handle to [this value] (an array containing the handle string).]`;
     addMessage('assistant', `Got it — that ${fileType} is uploaded and ready. Tell me what message should go with it and I'll build the template with it as the header.`);
   } catch (err) {
     removeThinking();
