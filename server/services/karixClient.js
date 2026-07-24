@@ -149,17 +149,32 @@ class KarixClient {
   }
 
   // ---- Create File Handle (media upload for header) -----------------------
-  // POST /api/v1.0/template/{wabaId}/media   (multipart/form-data: file, file_type)
-  // file_type valid values per docs: image | video | document
+  // POST /api/v1.0/template/{wabaId}/media   (multipart/form-data: file, file_type, fileName)
+  //
+  // IMPORTANT: the doc's parameter table lists file_type's valid values as
+  // the generic categories "image, video, document" — but the doc's own
+  // worked examples send file_type as an actual MIME type instead
+  // ("image/jpg", "video/mp4"). The worked example is what's correct: the
+  // table version causes Meta to reject the resulting handle downstream at
+  // template-creation time with an opaque "file type not supported" error,
+  // even for genuinely valid image files, because the file handle itself
+  // gets tagged with the wrong type at creation. There's also a `fileName`
+  // form field in the example that the parameter table doesn't mention at
+  // all — included here since the example is more trustworthy than the table.
+  //
   // Returns a header_handle string to reference in the HEADER component's
   // `example.header_handle` array when creating/editing a template.
-  async uploadMedia({ buffer, filename, mimeType, fileType }) {
-    if (!['image', 'video', 'document'].includes(fileType)) {
-      throw new Error(`Invalid fileType "${fileType}" — must be image, video, or document`);
+  async uploadMedia({ buffer, filename, mimeType, category }) {
+    if (!['image', 'video', 'document'].includes(category)) {
+      throw new Error(`Invalid category "${category}" — must be image, video, or document`);
+    }
+    if (!mimeType) {
+      throw new Error('mimeType is required — Karix expects the real MIME type (e.g. "image/jpeg"), not just the category');
     }
     const form = new FormData();
     form.append('file', buffer, { filename, contentType: mimeType });
-    form.append('file_type', fileType);
+    form.append('file_type', mimeType);
+    form.append('fileName', filename);
 
     return this._request('POST', `/api/v1.0/template/${this.wabaId}/media`, { form });
   }

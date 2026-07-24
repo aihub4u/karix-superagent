@@ -117,7 +117,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 // ---- Media upload for HEADER (image/video/document) before create/edit --
 router.post('/media/:wabaAccountId', upload.single('file'), asyncHandler(async (req, res) => {
   const { organizationId } = req.auth;
-  const { fileType } = req.body; // 'image' | 'video' | 'document'
+  const { fileType: category } = req.body; // 'image' | 'video' | 'document' — classification only; the real MIME type (req.file.mimetype) is what's actually sent to Karix
   if (!req.file) return res.status(400).json({ error: 'file is required' });
 
   try {
@@ -126,9 +126,9 @@ router.post('/media/:wabaAccountId', upload.single('file'), asyncHandler(async (
       buffer: req.file.buffer,
       filename: req.file.originalname,
       mimeType: req.file.mimetype,
-      fileType,
+      category,
     });
-    res.json({ karixResponse: body }); // expect a header_handle string somewhere in here — confirm shape live
+    res.json({ karixResponse: body }); // confirmed shape: { response: { fileHandle: "4::..." } }
   } catch (err) {
     const detail = err instanceof KarixApiError ? { status: err.status, body: err.body } : { message: err.message };
     res.status(502).json({ error: 'media_upload_failed', detail });

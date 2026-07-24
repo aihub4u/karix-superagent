@@ -38,19 +38,38 @@ quota — extend it as you hit real-world edge cases.
 
 Built directly from the 60-page Karix RCM Template API doc you provided —
 endpoints, field names, category rules, and character/rate limits are
-taken verbatim from there. Two things aren't documented and need
-confirming against a sandbox call before production:
+taken verbatim from there. Confirmed and fixed against real API calls
+since then:
+
+- **Media upload `file_type` field** — the doc's parameter table says
+  valid values are the generic categories `image, video, document`, but
+  the doc's own worked example sends actual MIME types instead
+  (`image/jpg`, `video/mp4`). The example was correct and the table was
+  misleading: sending the category causes Meta to reject the resulting
+  file handle downstream at template-creation time with an opaque "file
+  type not supported" error, even for genuinely valid files. `karixClient.js`
+  now sends the real MIME type, plus a `fileName` form field the example
+  included but the table never mentioned.
+- **Media upload response shape** — confirmed via a live call:
+  `{ response: { fileHandle: "4::..." } }`. `templates.js`'s media route
+  and `public/index.html`'s upload handler both read from this path
+  (with fallbacks to `header_handle`/`handle` at the top level in case the
+  shape varies by account/region).
+
+Still unconfirmed and worth checking before wider production use:
 
 1. **Auth header name** — most examples show `Authentication: Bearer …`,
    a couple show `Authorization`. Currently set to `Authentication` in
    `karixClient.js` (`AUTH_HEADER_NAME` constant) — flip in one place if
-   you get 401s.
-2. **Success/error response body shape** — the docs list status codes
-   (200/201, and error codes 1001–1010) but not the JSON shape of a
-   successful create response. `karixClient.js` and the routes that use
-   it don't assume a shape; they try `body.id / body.template_id /
-   body.templateId` when looking for the new template's ID. Once you see
-   a real response, tighten that up in `templates.js` and `bulkImport.js`.
+   you get 401s. (Not yet hit in testing, since real calls have been
+   succeeding auth-wise.)
+2. **Create Template success/error response body shape** — the docs list
+   status codes (200/201, and error codes 1001–1010) but not the JSON
+   shape of a successful create response. `karixClient.js` and the routes
+   that use it don't assume a shape; they try `body.id / body.template_id
+   / body.templateId` when looking for the new template's ID. Once you see
+   a real successful (non-error) create response, tighten that up in
+   `templates.js` and `bulkImport.js`.
 
 ## Setup
 
