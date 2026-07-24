@@ -884,6 +884,11 @@ async function handleSpreadsheetAttach(file) {
   messagesEl.appendChild(cardRow);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
+  // So the chat agent has some awareness a bulk upload happened even before
+  // it finishes — full results get added to history once the job completes.
+  history.push({ role: 'user', content: `[User attached a bulk template spreadsheet: "${file.name}"]` });
+  history.push({ role: 'assistant', content: `Uploading and processing "${file.name}" now — I'll summarize the results here once it's done.` });
+
   const form = new FormData();
   form.append('file', file);
   form.append('wabaAccountId', currentWabaAccountId());
@@ -921,8 +926,29 @@ async function pollJobInline(jobId, fileName) {
         return `<div class="job-row-group"><div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>${reason}${specLine}</div>`;
       }).join('');
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    if (['completed', 'completed_with_errors', 'failed'].includes(data.job.status)) clearInterval(timer);
+    if (['completed', 'completed_with_errors', 'failed'].includes(data.job.status)) {
+      clearInterval(timer);
+      historicizeJobResult(fileName, data);
+    }
   }, 2000);
+}
+
+/**
+ * Folds the finished bulk-import job into the conversation history as a
+ * plain-language summary, so a later chat question like "what did you
+ * create from the excel?" has something real to answer from — otherwise
+ * the AI has zero awareness bulk imports even happened, since that flow
+ * never touches /api/chat until this point.
+ */
+function historicizeJobResult(fileName, data) {
+  const lines = data.rows.map((r) => {
+    const name = (r.resolved_spec && r.resolved_spec.template_name) || `row ${r.row_number}`;
+    if (r.status === 'submitted') return `- "${name}": submitted to Karix successfully.`;
+    if (r.status === 'needs_review') return `- "${name}": flagged for review — ${r.error_message || 'no reason given'}.`;
+    return `- "${name}" (row ${r.row_number}): failed — ${r.error_message || 'unknown error'}.`;
+  });
+  const summary = `[System note: bulk upload of "${fileName}" finished. ${data.job.succeeded_rows}/${data.job.total_rows} submitted, ${data.job.failed_rows} need review or failed.\n${lines.join('\n')}]`;
+  history.push({ role: 'assistant', content: summary });
 }
 
 // ---- image/video/document attach -> upload as a template HEADER media handle ----
