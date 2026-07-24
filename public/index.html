@@ -117,35 +117,7 @@
   .dot.err { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  .mode-switch {
-    display: flex;
-    background: rgba(16,21,44,0.7);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 3px;
-    gap: 2px;
-  }
-  .mode-btn {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    background: none;
-    border: none;
-    color: var(--mist);
-    padding: 7px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .mode-btn.active {
-    background: linear-gradient(135deg, rgba(124,108,255,0.25), rgba(47,230,224,0.18));
-    color: var(--ink);
-    box-shadow: inset 0 0 0 1px var(--line-lit);
-  }
-  .mode-btn:hover:not(.active) { color: var(--ink); }
-
-  .chat-col { display: flex; flex-direction: column; border-right: 1px solid var(--line); overflow: hidden; }
+  .chat-col { display: flex; flex-direction: column; border-right: 1px solid var(--line); overflow: hidden; position: relative; }
 
   .messages { flex: 1; overflow-y: auto; padding: 28px 28px 12px; display: flex; flex-direction: column; gap: 16px; }
   .messages::-webkit-scrollbar { width: 8px; }
@@ -240,39 +212,63 @@
   .composer button:hover { filter: brightness(1.1); }
   .composer button:active { transform: scale(0.97); }
 
-  .bulk-panel { display: none; flex: 1; padding: 32px; overflow-y: auto; }
-  .bulk-panel.active { display: block; }
-  .bulk-intro { color: var(--mist); font-size: 14px; line-height: 1.6; margin-bottom: 22px; max-width: 540px; }
-  .bulk-intro strong { color: var(--ink); }
-
-  .drop {
-    border: 1.5px dashed var(--line-lit);
-    border-radius: 10px;
-    padding: 48px 24px;
-    text-align: center;
+  .attach-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px; flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(8,11,22,0.7);
     color: var(--mist);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
     cursor: pointer;
-    background: repeating-linear-gradient(135deg, rgba(47,230,224,0.02) 0px, rgba(47,230,224,0.02) 10px, transparent 10px, transparent 20px);
-    transition: border-color 0.15s ease, background 0.15s ease;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
   }
-  .drop:hover, .drop.drag { border-color: var(--cyan); background: rgba(47,230,224,0.05); }
-  .drop .drop-icon { font-size: 22px; margin-bottom: 10px; display: block; opacity: 0.6; }
+  .attach-btn:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(47,230,224,0.06); }
 
-  .job-log { margin-top: 24px; font-family: var(--font-mono); font-size: 12px; }
-  .job-summary { color: var(--mist); margin-bottom: 12px; letter-spacing: 0.02em; }
-  .job-summary b { color: var(--cyan); }
-  .job-row {
+  .drag-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(8,11,22,0.88);
+    border: 1.5px dashed var(--cyan);
+    margin: 12px;
+    border-radius: 10px;
+  }
+  .drag-overlay.active { display: flex; }
+  .drag-overlay-inner {
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--cyan);
+  }
+
+  .attach-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px;
+    background: rgba(8,11,22,0.35);
+    border: 1px solid rgba(5,8,16,0.3);
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-top: 8px;
+  }
+
+  .job-card {
+    font-family: var(--font-mono); font-size: 12px;
+    background: rgba(8,11,22,0.5);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    min-width: 280px;
+  }
+  .job-card .job-summary { color: var(--mist); margin-bottom: 10px; letter-spacing: 0.02em; }
+  .job-card .job-summary b { color: var(--cyan); }
+  .job-card .job-row {
     display: flex; justify-content: space-between; gap: 12px;
-    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    padding: 6px 0; border-bottom: 1px solid var(--line);
     color: var(--mist);
   }
-  .job-row .row-status { text-transform: uppercase; letter-spacing: 0.06em; }
-  .job-row .row-status.submitted { color: var(--mint); }
-  .job-row .row-status.failed, .job-row .row-status.needs_review { color: var(--amber); }
+  .job-card .job-row:last-child { border-bottom: none; }
+  .job-card .row-status { text-transform: uppercase; letter-spacing: 0.06em; }
+  .job-card .row-status.submitted { color: var(--mint); }
+  .job-card .row-status.failed, .job-card .row-status.needs_review { color: var(--amber); }
 
   .preview-col {
     padding: 28px 24px;
@@ -373,7 +369,7 @@
   .approve-btn:active:not(:disabled) { transform: scale(0.98); }
   .approve-btn:disabled { background: var(--panel-2); color: var(--mist-dim); cursor: not-allowed; }
 
-  button:focus-visible, input:focus-visible, select:focus-visible, .drop:focus-visible {
+  button:focus-visible, input:focus-visible, select:focus-visible, .attach-btn:focus-visible {
     outline: 2px solid var(--cyan);
     outline-offset: 2px;
   }
@@ -481,10 +477,6 @@
     <div class="header-right">
       <div class="link-status"><span class="dot" id="linkDot"></span><span id="linkLabel">Checking link…</span></div>
       <button class="account-btn" id="accountBtn"><span class="gear">⚙</span><span id="accountLabel">Setup WABA connection</span></button>
-      <div class="mode-switch">
-        <button class="mode-btn active" id="tabChat">Conversational</button>
-        <button class="mode-btn" id="tabBulk">Bulk Uplink</button>
-      </div>
     </div>
   </div>
 
@@ -525,30 +517,25 @@
     </div>
   </div>
 
-  <div class="chat-col">
-    <div id="chatView" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
-      <div class="messages" id="messages">
-        <div class="msg-row assistant">
-          <span class="msg-tag">Karix AI</span>
-          <div class="msg assistant">Tell me what kind of WhatsApp message you want to send — e.g. "an order confirmation with the order number and delivery date", or "an OTP login code".</div>
-        </div>
-      </div>
-      <div class="composer">
-        <input id="input" placeholder="Describe the template you want to transmit…" />
-        <button id="send">Transmit
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 11L21 3L13 21L11 13L3 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        </button>
+  <div class="chat-col" id="chatCol">
+    <div class="drag-overlay" id="dragOverlay">
+      <div class="drag-overlay-inner">⇪ Drop to attach — Excel/CSV for bulk templates, image for a header</div>
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg-row assistant">
+        <span class="msg-tag">Karix AI</span>
+        <div class="msg assistant">Tell me what kind of WhatsApp message you want to send — e.g. "an order confirmation with the order number and delivery date", or "an OTP login code". You can also attach an Excel/CSV sheet to bulk-create templates, or an image to use as a header.</div>
       </div>
     </div>
-
-    <div class="bulk-panel" id="bulkView">
-      <p class="bulk-intro">Upload an Excel/CSV sheet with one row per template. Columns can be loosely named — <strong>Karix AI</strong> interprets and normalizes each row before submission.</p>
-      <div class="drop" id="dropZone" tabindex="0">
-        <span class="drop-icon">⇪</span>
-        Drop .xlsx / .csv file here — or click to select
-      </div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" />
-      <div id="jobStatus" class="job-log"></div>
+    <div class="composer">
+      <button id="attachBtn" class="attach-btn" type="button" title="Attach a file">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.19 9.19a2 2 0 01-2.83-2.83l8.49-8.49" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,image/*,video/*,application/pdf" style="display:none" />
+      <input id="input" placeholder="Describe the template you want to transmit…" />
+      <button id="send">Transmit
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 11L21 3L13 21L11 13L3 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
     </div>
   </div>
 
@@ -713,14 +700,20 @@ async function sendMessage() {
   if (!text) return;
   addMessage('user', text);
   inputEl.value = '';
-  history.push({ role: 'user', content: text });
+
+  // If a file was just attached, tell the model about it (invisibly to the
+  // displayed bubble) so it can incorporate the resulting header handle.
+  const outgoing = pendingMediaNote ? `${text}\n\n${pendingMediaNote}` : text;
+  pendingMediaNote = null;
+
+  history.push({ role: 'user', content: outgoing });
   addThinking();
 
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: authHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ message: text, history: history.slice(0, -1) }),
+      body: JSON.stringify({ message: outgoing, history: history.slice(0, -1) }),
     });
     const data = await res.json();
     removeThinking();
@@ -770,54 +763,136 @@ approveBtn.addEventListener('click', async () => {
   }
 });
 
-document.getElementById('tabChat').addEventListener('click', () => {
-  document.getElementById('chatView').style.display = 'flex';
-  document.getElementById('bulkView').classList.remove('active');
-  document.getElementById('tabChat').classList.add('active');
-  document.getElementById('tabBulk').classList.remove('active');
-});
-document.getElementById('tabBulk').addEventListener('click', () => {
-  document.getElementById('chatView').style.display = 'none';
-  document.getElementById('bulkView').classList.add('active');
-  document.getElementById('tabBulk').classList.add('active');
-  document.getElementById('tabChat').classList.remove('active');
-});
+// ---- file attach (spreadsheet -> bulk import job card; image/video/doc -> media upload for header) ----
+const SPREADSHEET_EXT = ['.xlsx', '.xls', '.csv'];
+let pendingMediaNote = null; // set after a successful media upload; folded into the next chat message
 
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
-fileInput.addEventListener('change', () => uploadFile(fileInput.files[0]));
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('drag'); uploadFile(e.dataTransfer.files[0]); });
+function isSpreadsheet(file) {
+  const name = file.name.toLowerCase();
+  return SPREADSHEET_EXT.some((ext) => name.endsWith(ext));
+}
 
-async function uploadFile(file) {
+async function handleAttachedFile(file) {
   if (!file) return;
   if (!currentWabaAccountId()) {
-    document.getElementById('jobStatus').innerHTML = '<div class="job-summary">No WABA account connected yet — click "Setup WABA connection" in the header first.</div>';
+    addMessage('assistant', 'No WABA account connected yet — click "Setup WABA connection" in the header first, then attach the file again.');
     return;
   }
+
+  if (isSpreadsheet(file)) {
+    await handleSpreadsheetAttach(file);
+  } else {
+    await handleMediaAttach(file);
+  }
+}
+
+function addAttachmentUserBubble(file, note) {
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `<span class="msg-tag">You</span>
+    <div class="msg user">
+      Attached: ${file.name}
+      <div class="attach-chip">${(file.size / 1024).toFixed(0)} KB${note ? ' · ' + note : ''}</div>
+    </div>`;
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ---- spreadsheet attach -> bulk import, rendered as a live job card inline in the chat ----
+async function handleSpreadsheetAttach(file) {
+  addAttachmentUserBubble(file, 'bulk template sheet');
+
+  const cardRow = document.createElement('div');
+  cardRow.className = 'msg-row assistant';
+  cardRow.innerHTML = `<span class="msg-tag">Karix AI</span>
+    <div class="msg assistant">Uploading and queuing rows for processing…
+      <div class="job-card" id="jobCard-pending"></div>
+    </div>`;
+  messagesEl.appendChild(cardRow);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
   const form = new FormData();
   form.append('file', file);
   form.append('wabaAccountId', currentWabaAccountId());
-  document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Uploading and queuing…</div>';
-  const res = await fetch('/api/bulk-import', { method: 'POST', headers: authHeaders(), body: form });
-  const data = await res.json();
-  if (!res.ok) { document.getElementById('jobStatus').innerHTML = '<div class="job-summary">Upload failed: ' + data.error + '</div>'; return; }
-  pollJob(data.jobId);
+
+  try {
+    const res = await fetch('/api/bulk-import', { method: 'POST', headers: authHeaders(), body: form });
+    const data = await res.json();
+    if (!res.ok) {
+      cardRow.querySelector('.job-card').innerHTML = `<div class="job-summary">Upload failed: ${data.error || 'unknown error'}</div>`;
+      return;
+    }
+    cardRow.querySelector('.job-card').id = 'jobCard-' + data.jobId;
+    pollJobInline(data.jobId, file.name);
+  } catch (err) {
+    cardRow.querySelector('.job-card').innerHTML = `<div class="job-summary">Upload failed — could not reach the server.</div>`;
+  }
 }
 
-async function pollJob(jobId) {
-  const el = document.getElementById('jobStatus');
+async function pollJobInline(jobId, fileName) {
+  const cardEl = document.getElementById('jobCard-' + jobId);
+  if (!cardEl) return;
   const timer = setInterval(async () => {
     const res = await fetch('/api/bulk-import/' + jobId, { headers: authHeaders() });
     const data = await res.json();
-    el.innerHTML = `<div class="job-summary">STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
+    cardEl.innerHTML = `<div class="job-summary">${fileName} — STATUS <b>${data.job.status.toUpperCase()}</b> — ${data.job.processed_rows}/${data.job.total_rows} rows · ${data.job.succeeded_rows} transmitted · ${data.job.failed_rows} need review</div>` +
       data.rows.map(r => `<div class="job-row"><span>Row ${r.row_number}</span><span class="row-status ${r.status}">${r.status}</span></div>`).join('');
-    if (['completed','completed_with_errors','failed'].includes(data.job.status)) clearInterval(timer);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (['completed', 'completed_with_errors', 'failed'].includes(data.job.status)) clearInterval(timer);
   }, 2000);
 }
+
+// ---- image/video/document attach -> upload as a template HEADER media handle ----
+async function handleMediaAttach(file) {
+  let fileType = 'document';
+  if (file.type.startsWith('image/')) fileType = 'image';
+  else if (file.type.startsWith('video/')) fileType = 'video';
+
+  addAttachmentUserBubble(file, `${fileType} for header`);
+  addThinking();
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('fileType', fileType);
+
+  try {
+    const res = await fetch('/api/templates/media/' + currentWabaAccountId(), {
+      method: 'POST', headers: authHeaders(), body: form,
+    });
+    const data = await res.json();
+    removeThinking();
+    if (!res.ok) {
+      addMessage('assistant', 'Media upload failed: ' + (data.error || 'unknown error'));
+      return;
+    }
+    const handle = data.karixResponse && (data.karixResponse.header_handle || data.karixResponse.handle || JSON.stringify(data.karixResponse));
+    pendingMediaNote = `[System note: the user just attached a ${fileType} file named "${file.name}". It has been uploaded to Karix and the resulting header handle is: ${handle}. If they want this used as a HEADER component, set format to ${fileType.toUpperCase()} and example.header_handle to this value.]`;
+    addMessage('assistant', `Got it — that ${fileType} is uploaded and ready. Tell me what message should go with it and I'll build the template with it as the header.`);
+  } catch (err) {
+    removeThinking();
+    addMessage('assistant', 'Media upload failed — could not reach the server.');
+  }
+}
+
+document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  handleAttachedFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// drag-and-drop anywhere over the conversation
+const chatCol = document.getElementById('chatCol');
+const dragOverlay = document.getElementById('dragOverlay');
+let dragCounter = 0;
+chatCol.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; dragOverlay.classList.add('active'); });
+chatCol.addEventListener('dragover', (e) => e.preventDefault());
+chatCol.addEventListener('dragleave', () => { dragCounter--; if (dragCounter <= 0) { dragCounter = 0; dragOverlay.classList.remove('active'); } });
+chatCol.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragCounter = 0;
+  dragOverlay.classList.remove('active');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) handleAttachedFile(e.dataTransfer.files[0]);
+});
 
 // ---- setup modal ----
 const setupModal = document.getElementById('setupModal');
