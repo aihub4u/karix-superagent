@@ -654,6 +654,33 @@ function removeThinking() {
   if (el) el.remove();
 }
 
+/**
+ * Hard guard against the AI fabricating or reusing a stale header_handle
+ * (which passes server-side validation fine, since a handle is "just a
+ * string" there, but fails downstream at Meta with an opaque error). This
+ * only trusts handles this browser actually produced via a real upload —
+ * see mediaPreviewByHandle, populated in handleMediaAttach.
+ */
+function mergeMediaHandleChecks(spec, validation) {
+  const merged = {
+    valid: validation ? validation.valid : true,
+    errors: validation ? [...validation.errors] : [],
+    warnings: validation ? [...validation.warnings] : [],
+  };
+  const header = spec.components && spec.components.find(c => c.type === 'HEADER');
+  if (header && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(header.format)) {
+    const handleArr = header.example && header.example.header_handle;
+    const handle = Array.isArray(handleArr) ? handleArr[0] : handleArr;
+    if (!handle || !mediaPreviewByHandle[handle]) {
+      merged.valid = false;
+      merged.errors.push(
+        `This template has a ${header.format} header whose file was not actually attached in this session — the handle is unverified and Karix/Meta will reject it. Attach the real file using the paperclip button, then ask again.`
+      );
+    }
+  }
+  return merged;
+}
+
 function renderHeaderHtml(header) {
   if (header.format === 'TEXT' || !header.format) {
     return `<div class="hdr">${(header.text || '').replace(/</g, '&lt;')}</div>`;
@@ -754,7 +781,7 @@ async function sendMessage() {
     if (data.spec) {
       currentSpec = data.spec;
       renderPreview(data.spec);
-      renderValidation(data.validation);
+      renderValidation(mergeMediaHandleChecks(data.spec, data.validation));
     }
   } catch (err) {
     removeThinking();
@@ -769,6 +796,11 @@ approveBtn.addEventListener('click', async () => {
   if (!currentSpec) return;
   if (!currentWabaAccountId()) {
     addMessage('assistant', 'No WABA account connected yet — click "Setup WABA connection" in the header first.');
+    return;
+  }
+  const finalCheck = mergeMediaHandleChecks(currentSpec, { valid: true, errors: [], warnings: [] });
+  if (!finalCheck.valid) {
+    renderValidation(finalCheck);
     return;
   }
   approveBtn.disabled = true;
